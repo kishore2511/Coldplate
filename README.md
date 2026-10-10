@@ -9,7 +9,8 @@ Research-driven, GPU-first thermal–fluid simulation for cold plates, microchan
 | Research register & ADRs | Implemented |
 | Procedural fluid-domain extraction (Gmsh) | Implemented, tested |
 | Connectivity graph & diagnostics | Implemented, tested |
-| 1D FR scalar solver (CPU reference) | Numerically verified (pytest) |
+| 1D/3D FR scalar thermal + passive VOF (structured hex) | Numerically verified (pytest) |
+| VTK export + temperature/VOF contour PNGs | Implemented, tested |
 | GPU CUDA kernels | Planned (fail-closed `gpu_only` API present) |
 | Incompressible 3D flow, CHT, two-phase, boiling | Planned |
 
@@ -25,7 +26,10 @@ pip install -e ".[dev]"
 pytest -q
 coldplate capabilities
 coldplate smoke-geometry
+coldplate run-channel-3d --output output/channel_3d
 ```
+
+Post-processing outputs: `channel_fr_structured.vtk`, `channel_gmsh_fluid.vtk`, `temperature_contour.png`, `vof_contour.png`.
 
 ## Repository layout
 
