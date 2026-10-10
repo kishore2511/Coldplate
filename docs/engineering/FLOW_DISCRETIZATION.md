@@ -5,7 +5,8 @@
 | Component | Discretization | Notes |
 |-----------|----------------|-------|
 | Steady Stokes (verification) | P1–P1 mixed + PSPG (τ = h²/(4ν)) | `flow_p1_pspg_mixed.py`; pressure pin |
-| Steady Stokes (fin channel) | P1 + grad-div penalty | Legacy path; ~19.7% port imbalance documented |
+| Steady Stokes (fin channel, production) | PSPG + momentum grad-div (β=100) | `solve_integral_channel_pspg`; pressure DOF; same port flux as penalty at β=100 |
+| Steady Stokes (fin channel, legacy) | P1 + grad-div penalty | `formulation="penalty"`; regression |
 | Transient | Chorin–Temam projection on P1 | Lumped div → Poisson; γP stabilization |
 | High-order FR momentum | **Not implemented** | 1D/hex FR remain verification-only |
 

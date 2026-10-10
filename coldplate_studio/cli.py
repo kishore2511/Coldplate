@@ -16,7 +16,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="coldplate")
     parser.add_argument(
         "command",
-        choices=["capabilities", "smoke-geometry", "backend-info", "run-channel-3d"],
+        choices=["capabilities", "smoke-geometry", "backend-info", "run-channel-3d", "run-fin-channel-e2e"],
     )
     parser.add_argument("--output", default="output/channel_3d", help="Output directory for run-channel-3d")
     args = parser.parse_args()
@@ -25,6 +25,12 @@ def main() -> None:
     elif args.command == "backend-info":
         backend = ComputeBackend(gpu_only=False)
         print(json.dumps(backend.diagnostics().to_dict(), indent=2))
+    elif args.command == "run-fin-channel-e2e":
+        from pathlib import Path
+
+        from coldplate_studio.simulation.fin_channel_e2e import main as e2e_main
+
+        raise SystemExit(e2e_main(["--output", args.output]))
     elif args.command == "run-channel-3d":
         from pathlib import Path
 

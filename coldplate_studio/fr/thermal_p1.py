@@ -96,8 +96,9 @@ def interface_heat_flux(
         grad_t = _interface_temperature_gradient(mesh, tri, temperature, "fluid", conductivity_fluid)
         grad_ts = _interface_temperature_gradient(mesh, tri, temperature, "solid", conductivity_solid)
         n_vec = tri_g.normal * tri_g.area_m2
+        # n_vec is outward from fluid; solid-side outward normal is opposite.
         q_f += float(np.dot(-conductivity_fluid * grad_t, n_vec))
-        q_s += float(np.dot(-conductivity_solid * grad_ts, n_vec))
+        q_s += float(np.dot(-conductivity_solid * grad_ts, -n_vec))
     return q_f, q_s
 
 

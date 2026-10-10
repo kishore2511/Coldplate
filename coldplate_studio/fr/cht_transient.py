@@ -8,6 +8,7 @@ import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
+from coldplate_studio.fr.dirichlet_p1 import apply_dirichlet_elimination
 from coldplate_studio.fr.thermal_p1 import (
     assemble_advection,
     assemble_region_lumped_mass,
@@ -78,27 +79,20 @@ class ConjugateHeatTransferSolver:
         self._c = assemble_advection(mesh, velocity, props.rho_cp_fluid)
         self.state = CHTState(temperature=np.full(n, bcs.solid_outer_temperature_k))
 
-    def _apply_dirichlet(self, a: sparse.lil_matrix, b: np.ndarray) -> None:
+    def _dirichlet_pairs(self) -> list[tuple[int, float]]:
+        pairs: list[tuple[int, float]] = []
         for idx in self.bcs.fluid_inlet_nodes:
-            i = int(idx)
-            a[i, :] = 0
-            a[:, i] = 0
-            a[i, i] = 1.0
-            b[i] = self.bcs.fluid_inlet_temperature_k
+            pairs.append((int(idx), self.bcs.fluid_inlet_temperature_k))
         for idx in self.bcs.solid_outer_nodes:
-            i = int(idx)
-            a[i, :] = 0
-            a[:, i] = 0
-            a[i, i] = 1.0
-            b[i] = self.bcs.solid_outer_temperature_k
+            pairs.append((int(idx), self.bcs.solid_outer_temperature_k))
+        return pairs
 
     def step(self, dt: float) -> CHTDiagnostics:
-        n = self.mesh.nodes.shape[0]
         m = sparse.diags(self._lumped, format="csr")
         a = (m / dt + self._k + self._c).tolil()
         b = m @ self.state.temperature / dt
-        self._apply_dirichlet(a, b)
-        t_new = spsolve(a.tocsr(), b)
+        a, b = apply_dirichlet_elimination(a.tocsr(), b, self._dirichlet_pairs())
+        t_new = spsolve(a, b)
         self.state.temperature = t_new
         self.state.time += dt
         return self.diagnostics()

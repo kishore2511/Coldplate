@@ -7,7 +7,7 @@ from coldplate_studio.simulation.flow_channel import run_channel_flow
 @pytest.mark.gmsh
 def test_channel_stokes_mass_conservation():
     model = build_integral_channel_model(mesh_size=0.08)
-    result = run_channel_flow(model)
+    result = run_channel_flow(model, formulation="penalty")
     assert result.ports_ok
     assert result.flow.divergence_l2 < 5.0  # coarse penalty Stokes
     assert result.mass_flux_relative_imbalance < 0.35

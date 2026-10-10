@@ -30,6 +30,10 @@ class FlowSolveResult:
     inlet_flux_m3_s: float
     outlet_flux_m3_s: float
     mean_velocity_x: float
+    formulation: str = "penalty_stokes"
+    pressure: np.ndarray | None = None
+    pressure_drop: float | None = None
+    solver_residual_norm: float | None = None
 
 
 def _assemble_vector_laplacian(mesh: IntegralMesh, nu: float, fluid_mask: np.ndarray) -> sparse.csr_matrix:

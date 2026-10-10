@@ -2,7 +2,7 @@
 
 ## Test suite (reproduced)
 
-`python3 -m pytest -q` → see latest PR commit; target **39 passed, 1 skipped** (CUDA SpMV).
+`python3 -m pytest -q` → **42 passed, 1 skipped** (CUDA SpMV).
 
 ## Flow diagnostics definitions
 

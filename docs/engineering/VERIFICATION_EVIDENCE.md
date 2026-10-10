@@ -24,3 +24,7 @@
 | `conjugate_heat_transfer_p1` | numerically_verified | `test_integral_channel_interface_flux_opposite_signs` | \|Q_f+Q_s\|/max < 35% | coarse integral mesh |
 | `conjugate_heat_transfer_p1` | numerically_verified | `test_cht_transient_energy_balance_relative_residual` | rel residual < 2 | semi-implicit BE; `cht_energy.py` |
 | `conjugate_heat_transfer_p1` | numerically_verified | `test_cht_integral_channel_energy_increases_with_hot_inlet` | E_total increases | uses solved **u** from `run_channel_flow` |
+| `integral_fin_channel_pspg_flow` | numerically_verified | `test_fin_channel_pspg_matches_penalty_mass_flux_at_reference_mesh` | PSPG≈penalty Φ at h=0.08 | β=100 open duct |
+| `integral_fin_channel_pspg_flow` | numerically_verified | `test_fin_channel_pspg_refinement_table_recorded` | 0.08 imb 15–25% | see FIN_CHANNEL_V03.md |
+| `fin_channel_single_phase_e2e` | numerically_verified | `test_fin_channel_e2e_flow_gates_pass_reference_mesh` | flow gates | mesh_size=0.08 |
+| `conjugate_heat_transfer_p1` | numerically_verified | `test_integral_channel_interface_flux_continuity_linear_z` | imbalance &lt; 1e-6 | same k, T∝z |

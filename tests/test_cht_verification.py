@@ -59,18 +59,19 @@ def test_two_material_steady_conduction_interface():
 
 
 @pytest.mark.gmsh
-def test_integral_channel_interface_flux_opposite_signs():
+def test_integral_channel_interface_flux_continuity_linear_z():
+    """Same k on both sides; T linear in z → flux continuity on horizontal fin interfaces."""
     model = build_integral_channel_model(mesh_size=0.07)
-    run = run_channel_flow(model)
-    t = np.full(model.mesh.nodes.shape[0], 320.0)
-    qf, qs = interface_heat_flux(model.mesh, t, 0.6, 200.0)
-    assert abs(qf + qs) / max(abs(qf), abs(qs), 1e-12) < 0.35
+    z = model.mesh.nodes[:, 2]
+    t = 300.0 + 100.0 * z
+    qf, qs = interface_heat_flux(model.mesh, t, 1.0, 1.0)
+    assert abs(qf + qs) / max(abs(qf), abs(qs), 1e-12) < 1e-6
 
 
 @pytest.mark.gmsh
 def test_cht_transient_energy_balance_relative_residual():
     model = build_integral_channel_model(mesh_size=0.08)
-    run = run_channel_flow(model)
+    run = run_channel_flow(model, formulation="pspg")
     inlet = np.array([i for i in model.mesh.boundary_fluid_nodes if model.mesh.nodes[i, 0] < 0.02], dtype=int)[:8]
     outlet = np.array([i for i in model.mesh.boundary_fluid_nodes if model.mesh.nodes[i, 0] > 0.98], dtype=int)[:8]
     solver = ConjugateHeatTransferSolver(
@@ -96,4 +97,4 @@ def test_cht_transient_energy_balance_relative_residual():
         outlet_nodes=outlet,
         velocity=run.flow.velocity,
     )
-    assert bal.relative_residual < 2.0  # coarse mesh + lumped BC; tracked not hidden
+    assert bal.relative_residual < 0.35
