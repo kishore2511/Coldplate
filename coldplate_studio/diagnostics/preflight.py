@@ -10,6 +10,8 @@ from coldplate_studio.connectivity.interface_maps import InterfaceConnectivity, 
 from coldplate_studio.geometry.extraction import FluidExtractionResult
 from coldplate_studio.mesh.fluid_connectivity import FluidConnectivityReport, analyze_fluid_connectivity
 from coldplate_studio.mesh.integral_model import IntegralModel
+from coldplate_studio.mesh.interface_geometry import analyze_interface_geometry
+from coldplate_studio.mesh.quality_gmsh import check_mesh_validity
 
 
 @dataclass
@@ -53,6 +55,22 @@ def run_integral_preflight(
         report.add(
             "disconnected_fluid",
             f"Found {fluid.n_components} disconnected fluid components (expected 1 for channel).",
+            "error",
+        )
+    igeom = analyze_interface_geometry(model.mesh)
+    if igeom.duplicate_triangle_keys:
+        report.add(
+            "duplicate_interface_triangles",
+            f"Found {len(igeom.duplicate_triangle_keys)} duplicate interface triangles.",
+            "warning",
+        )
+    if not igeom.orientation_ok:
+        report.add("interface_orientation", "Interface normal orientation check failed.", "warning")
+    validity = check_mesh_validity(model.mesh)
+    if not validity.ok:
+        report.add(
+            "mesh_invalid",
+            f"Mesh validity failed: {validity.negative_volume_count} non-positive tets.",
             "error",
         )
     return report
