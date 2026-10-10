@@ -71,8 +71,16 @@ Each milestone PR must include:
 - Known limitations
 - Next gate requirements
 
-## Current pytest summary (v0.1.0)
+## Current pytest summary (v0.2.0)
 
 ```
-8 passed in ~0.31s (CPU, Gmsh channel tests included)
+13 passed in ~4.1s (CPU, Gmsh + 3D FR thermal/VOF + VTK/contours)
 ```
+
+| Case | File |
+|------|------|
+| 3D VOF boundedness | `tests/test_fr_3d.py` |
+| 3D phase-change mass loss (prototype) | `tests/test_fr_3d.py` |
+| 3D thermal diffusion peak decay | `tests/test_fr_3d.py` |
+| VTK + contour export | `tests/test_postprocess_channel.py` |
+| Channel end-to-end | `tests/test_postprocess_channel.py` |

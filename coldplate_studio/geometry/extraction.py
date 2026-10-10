@@ -99,7 +99,8 @@ def extract_channel_fluid_domain(
             validation.add("no_interface", "No shared fluid-solid interface surfaces detected.", "error")
         gmsh.option.setNumber("Mesh.CharacteristicLengthMin", mesh_size)
         gmsh.option.setNumber("Mesh.CharacteristicLengthMax", mesh_size)
-        gmsh.model.mesh.generate(3)
+        if mesh_size > 0:
+            gmsh.model.mesh.generate(3)
         return FluidExtractionResult(
             ok=validation.ok,
             fluid_tags=fluid_tags,

@@ -61,4 +61,8 @@ Living bibliography and evidence log for numerical architecture decisions. Each 
 | Full Gaertner (1965) digitized bubble statistics | Not retrieved in this milestone; conditions to be confirmed before validation case implementation |
 | Proprietary cold-plate vendor internal test reports | Not available |
 
+## Audit trail
+
+A specification crosswalk with primary-source access notes and unresolved decisions is maintained in [`RESEARCH_AUDIT.md`](RESEARCH_AUDIT.md) (updated 2026-10-10).
+
 Update this register when ADRs change or new verification cases are added.

@@ -14,13 +14,24 @@ from coldplate_studio.gpu.backend import ComputeBackend
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="coldplate")
-    parser.add_argument("command", choices=["capabilities", "smoke-geometry", "backend-info"])
+    parser.add_argument(
+        "command",
+        choices=["capabilities", "smoke-geometry", "backend-info", "run-channel-3d"],
+    )
+    parser.add_argument("--output", default="output/channel_3d", help="Output directory for run-channel-3d")
     args = parser.parse_args()
     if args.command == "capabilities":
         print(json.dumps({k: v.value for k, v in CAPABILITY_MATRIX.items()}, indent=2))
     elif args.command == "backend-info":
         backend = ComputeBackend(gpu_only=False)
         print(json.dumps(backend.diagnostics().to_dict(), indent=2))
+    elif args.command == "run-channel-3d":
+        from pathlib import Path
+
+        from coldplate_studio.simulation.channel_3d import run_channel_3d_case
+
+        result = run_channel_3d_case(Path(args.output))
+        print(json.dumps(result.__dict__, indent=2, default=str))
     elif args.command == "smoke-geometry":
         result = extract_channel_fluid_domain(1.0, 0.2, 0.1, 0.02, 0.05)
         graph = build_connectivity_from_extraction(result)

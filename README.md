@@ -2,7 +2,7 @@
 
 Research-driven, GPU-first thermal–fluid simulation for cold plates, microchannels, TPMS structures, and two-phase liquid cooling.
 
-## Status (v0.1.0 — milestone 1–2 foundation)
+## Status (v0.2.0 — 3D FR thermal/VOF + post-processing)
 
 | Area | State |
 |------|--------|
