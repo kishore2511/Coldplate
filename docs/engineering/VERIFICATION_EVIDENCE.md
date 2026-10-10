@@ -14,4 +14,8 @@
 | `flow_mass_continuity_diagnostics` | numerically_verified | `test_channel_mass_continuity_diagnosis_reproduces_baseline` | imbalance 10–30% | reproduces ~19.7%; see FLOW_MASS_IMBALANCE_REPORT.md |
 | `steady_stokes_manufactured_solution` | numerically_verified | MMS h=0.06→0.032 | ux L2 decreases | h=0.06: L2≈2.37e-2, L∞≈9.96e-2; h=0.032: L2≈2.28e-2; β=0 viscous solve |
 | `incompressible_p1_transient_projection` | numerically_verified | `test_flow_transient.py` | div̄_after ≤ div̄_before, Φ_in>0, Φ_out<0 | fractional-step P1; not high-order FR |
-| `quasi_2d_poiseuille_duct` | implemented_unverified | `test_quasi_2d_poiseuille_flow_rate_documented` | Q vs theory | developing flow; \|Q_num−Q_ana\|/Q_ana≈99% at h=0.06 (documented) |
+| `quasi_2d_poiseuille_duct` | **invalid benchmark** | `test_quasi_2d_poiseuille_not_validated_hagen_poiseuille` | must fail vs theory | \|Q_err\|>90%; not Hagen–Poiseuille |
+| `developed_periodic_channel_flow` | numerically_verified | `test_developed_parabolic_profile_structured_duct` | ux L2 vs parabolic | nx=8–16: L2 **~1e-9–1e-10**; P1+penalty+periodic γ |
+| `thermal_conduction_p1` | numerically_verified | `test_1d_steady_conduction_linear_profile` | linear T | L2 err <0.5 K (Dirichlet on all faces) |
+| `thermal_conduction_p1` | numerically_verified | `test_transient_diffusion_fourier_mode_decay` | Fourier decay | L2 err <0.08 after 5 steps |
+| `conjugate_heat_transfer_p1` | implemented_unverified | `test_cht_integral_channel_energy_increases_with_hot_inlet` | E_total increases | uses solved **u** from `run_channel_flow` |
