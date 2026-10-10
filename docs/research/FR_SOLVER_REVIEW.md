@@ -32,18 +32,15 @@ Choosing **right Radau** correction functions recovers a stable nodal DG scheme 
 
 **Not yet implemented:** 2D/3D volume/face loops, curved metrics, BR2/LDG diffusion on unstructured meshes, entropy/aliasing filters (PyFR features in R-002).
 
-## PyFR v2.0.3 as reference (R-002, R-003)
+## PyFR literature (method reference only — not part of ColdPlate)
 
-| Topic | PyFR capability (surveyed) | ColdPlate plan |
-|-------|---------------------------|----------------|
-| Spatial scheme | High-order FR on hex/prism/tet/pyramid | Hex/quad first, then prisms for boundary layers |
-| Compressible NS | Yes | Not primary |
-| Incompressible NS | Yes — artificial compressibility + dual-time + multigrid | Independent implementation; compare on cylinder/channel cases |
-| GPU backends | CUDA, HIP, OpenCL, Metal, OpenMP | CUDA first for production |
-| Multiphase / VOF / boiling | **Not identified** in v2.0.3 release paper | In-house multiphase module |
-| CHT / moving interface | External coupling not native | Native interface graph + coupling operators |
+ColdPlate ships **only an in-house FR discretization**. PyFR is cited when reading about FR on GPUs (R-002, R-003); it is **not** integrated, forked, or required.
 
-**Attribution rule:** Any future cross-benchmark against PyFR must cite PyFR and respect BSD-3-Clause; no copied source without compliance review.
+| Topic | ColdPlate (in-house) |
+|-------|----------------------|
+| Spatial scheme | Huynh FR operators; **P1 tet** on integral Gmsh mesh today; high-order hex/prism FR on same `IntegralMesh` |
+| Mesh | Single `IntegralModel` from Gmsh pipeline (ADR-007) |
+| Multiphase | Native VOF/phase-change modules (not from PyFR) |
 
 ## Pressure–velocity coupling candidates (ADR-003)
 

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from coldplate_studio.mesh.gmsh_export import TetMesh
+from coldplate_studio.mesh.integral_model import IntegralMesh
 
 
 @dataclass
@@ -24,7 +24,7 @@ class InterfaceConnectivity:
     total_area_m2: float
 
 
-def build_interface_connectivity(mesh: TetMesh) -> InterfaceConnectivity:
+def build_interface_connectivity(mesh: IntegralMesh) -> InterfaceConnectivity:
     """Construct interface patches from exported Gmsh triangles."""
     nodes = mesh.nodes
     patches: list[InterfacePatch] = []

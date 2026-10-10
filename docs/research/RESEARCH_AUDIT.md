@@ -59,7 +59,7 @@
 
 **Trade-offs:** Coupled VOF/LS (ADR-008 provisional) adds curvature field cost; tensor hex FR cannot use arbitrary Gmsh tets without hex meshing or DGFEM on tets (future).
 
-**Implementation (current):** Passive VOF obeys the same FR advection operator as temperature on a **structured hexahedral** subgrid aligned with the channel bounds; Gmsh tet mesh is for visualization and interface auditing.
+**Implementation (current):** Passive VOF and temperature use **P1 FR/DG simplex operators** on the **same integral Gmsh tet mesh** (`IntegralModel`). Structured-hex FR modules remain for operator verification only (ADR-007).
 
 **Validation:** VOF ∈ [0,1]; mass decreases under superheat with prototype phase change; static bubble / PLIC tests still **open**.
 

@@ -9,7 +9,8 @@ Research-driven, GPU-first thermal–fluid simulation for cold plates, microchan
 | Research register & ADRs | Implemented |
 | Procedural fluid-domain extraction (Gmsh) | Implemented, tested |
 | Connectivity graph & diagnostics | Implemented, tested |
-| 1D/3D FR scalar thermal + passive VOF (structured hex) | Numerically verified (pytest) |
+| Integral Gmsh mesh → FR (P1 tet) thermal + VOF | Numerically verified (pytest) |
+| 1D / structured-hex FR operator tests | Verification references (not production mesh) |
 | VTK export + temperature/VOF contour PNGs | Implemented, tested |
 | GPU CUDA kernels | Planned (fail-closed `gpu_only` API present) |
 | Incompressible 3D flow, CHT, two-phase, boiling | Planned |
@@ -29,7 +30,9 @@ coldplate smoke-geometry
 coldplate run-channel-3d --output output/channel_3d
 ```
 
-Post-processing outputs: `channel_fr_structured.vtk`, `channel_gmsh_fluid.vtk`, `temperature_contour.png`, `vof_contour.png`.
+Post-processing uses the **same integral mesh** as the solver: `channel_integral.vtk`, `temperature_contour.png`, `vof_contour.png`.
+
+**Note:** ColdPlate implements the **Flux Reconstruction method** in-house. PyFR is optional reading for FR/GPU ideas, not a dependency or bundled solver.
 
 ## Repository layout
 

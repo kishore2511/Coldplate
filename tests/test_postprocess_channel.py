@@ -25,8 +25,8 @@ def test_channel_3d_end_to_end(tmp_path: Path):
     result = run_channel_3d_case(tmp_path / "case")
     assert result.connectivity_ok
     assert result.interface_triangles > 0
-    assert result.vtk_structured.exists()
-    assert result.vtk_tet.exists()
+    assert result.vtk_path.exists()
+    assert result.fr_element_family == "p1_tetrahedron"
     assert result.temperature_contour.exists()
     assert result.vof_contour.exists()
     assert 0.0 <= result.conservation_final["alpha_min"] <= 1.0

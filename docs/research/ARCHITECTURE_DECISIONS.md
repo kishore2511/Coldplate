@@ -8,20 +8,20 @@
 **Evidence:** R-001, R-004  
 **Consequences:** Correction-function choice must be documented per element family; alternative FR branches (SD-like) are deferred until stability studies exist.
 
-## ADR-002 — PyFR relationship
+## ADR-002 — Flux Reconstruction only (not the PyFR framework)
 
-**Status:** Accepted  
-**Context:** Spec requires PyFR as technical reference for GPU FR architecture.  
-**Decision:** Treat PyFR v2.0.3 as an **external reference implementation** (BSD-3-Clause). Do not vendor or silently reuse PyFR source; independently implement published FR mathematics. Benchmark against PyFR where licenses and problem definitions allow.  
-**Evidence:** R-002, R-003  
-**Consequences:** Feature parity claims must distinguish ColdPlate capabilities from PyFR (e.g., PyFR provides incompressible NS via artificial compressibility + dual-time; it does **not** provide boiling/VOF multiphysics in the surveyed release notes).
+**Status:** Accepted (revised)  
+**Context:** ColdPlate Studio adopts the **Flux Reconstruction numerical method** (Huynh 2007 and successors), not the PyFR application stack.  
+**Decision:** Implement an **in-house FR core** (correction functions, face fluxes, reference elements). PyFR publications/docs may be cited for **methodology and GPU operator-design patterns only**. **No PyFR dependency, plugin model, file formats, or source reuse.**  
+**Evidence:** R-001, R-002 (literature), R-003 (optional GPU notes)  
+**Consequences:** ColdPlate meshing, multiphase physics, UI, and post-processing are native; PyFR feature lists must never be implied as shipped capabilities.
 
 ## ADR-003 — Incompressible / low-Mach pathway
 
 **Status:** Proposed (implementation milestone 8)  
 **Context:** Liquid cold-plate coolant is incompressible/low-Mach.  
-**Decision:** Evaluate (a) pressure-projection, (b) artificial compressibility, (c) all-Mach preconditioning. **Provisional:** prototype artificial-compressibility FR following documented PyFR approach as one candidate, with divergence and mass-conservation gates before acceptance.  
-**Evidence:** R-005, R-006, R-002 §3.6  
+**Decision:** Evaluate (a) pressure-projection, (b) artificial compressibility (Chorin 1967 / follow-on literature), (c) all-Mach preconditioning on the **in-house FR residual**.  
+**Evidence:** R-005, R-006  
 **Consequences:** Pressure solver cost and stiffness for phase change must be measured explicitly (spec F).
 
 ## ADR-004 — CAD kernel and fluid extraction
@@ -46,11 +46,12 @@
 **Decision:** Prefer conformal interface meshes from shared Boolean boundaries; implement mortar/conservative interpolation only when conformal meshing fails, with explicit conservation tests.  
 **Consequences:** Separate data structures for stationary wall vs moving liquid–vapor interface (spec B4, E).
 
-## ADR-007 — Meshing subsystem boundary
+## ADR-007 — Integral mesh–solver coupling
 
-**Status:** Accepted  
-**Decision:** Mesh generation is a **separate subsystem** from the FR residual engine. Gmsh produces labeled groups; `mesh.fr_mapping` converts to FR element data with Jacobian/orientation tests.  
-**Evidence:** R-014, spec C
+**Status:** Accepted (revised)  
+**Decision:** Mesh generation is **integral** to the application: one `IntegralModel` (Gmsh OCC fragment → labeled volume mesh → boundary/FSI tags) is the **only** mesh passed to the FR solver and post-processor. No secondary structured grid for production runs.  
+**Evidence:** R-014, spec B–C  
+**Implementation:** `mesh.integral_pipeline.build_integral_channel_model`, `mesh.integral_model.IntegralMesh`, `fr.solver_integral.IntegralScalarThermalVOF3D` on `p1_tetrahedron` with high-order FR hex/prism extensions registered on the same model later.
 
 ## ADR-008 — Two-phase primary interface method (provisional)
 
