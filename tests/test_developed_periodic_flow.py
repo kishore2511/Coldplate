@@ -13,3 +13,4 @@ def test_developed_parabolic_profile_structured_duct():
     assert results[0].ux_l2_error < 1e-6
     assert results[-1].ux_l2_error <= results[0].ux_l2_error
     assert results[0].divergence_l2 < 1e-2
+    assert results[0].flow_rate_relative_error < 0.06

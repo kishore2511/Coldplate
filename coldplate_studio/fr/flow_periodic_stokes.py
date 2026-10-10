@@ -20,6 +20,10 @@ from coldplate_studio.fr.flow_p1_operators import (
     assemble_viscous_stiffness,
     wall_pinned_dofs,
 )
+from coldplate_studio.fr.flow_flux_diagnostics import (
+    analytical_parabolic_flow_rate,
+    cross_section_flow_rate_yz_plane,
+)
 from coldplate_studio.mesh.integral_model import IntegralMesh
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
@@ -135,10 +139,8 @@ def solve_developed_periodic_channel(
     diff = velocity[interior, 0] - u_exact[interior]
     ux_l2 = float(np.sqrt(np.mean(diff**2)))
     ux_linf = float(np.max(np.abs(diff))) if diff.size else 0.0
-    xs = mesh.nodes[:, 0]
-    mid = interior & (xs > 0.2 * length) & (xs < 0.8 * length)
-    q_num = float(np.mean(velocity[mid, 0]) * width * height) if mid.any() else 0.0
-    q_ana = g * width * (height**3) / (12.0 * nu)
+    q_num = cross_section_flow_rate_yz_plane(mesh, velocity, 0.5 * length, width)
+    q_ana = analytical_parabolic_flow_rate(height, width, g, nu)
     # Port imbalance N/A for periodic; use divergence as continuity metric.
     return DevelopedChannelResult(
         velocity=velocity,
