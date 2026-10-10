@@ -26,6 +26,7 @@
 | Stage | Deliverable | Gate |
 |-------|-------------|------|
 | 3a | Steady penalty Stokes + user ports | mass flux imbalance test |
-| 3b | Transient artificial compressibility P1 | Poiseuille profile L2 |
+| 3b | Transient P1 projection (Chorin–Temam) | `test_flow_transient.py` |
+| 3b′ | MMS steady Stokes (β=0 viscous) | `test_manufactured_stokes_converges_with_refinement` |
 | 3c | FR hex/tet momentum + energy split | mesh/time convergence |
 | 3d | Solid conduction + FSI heat flux | flux continuity |

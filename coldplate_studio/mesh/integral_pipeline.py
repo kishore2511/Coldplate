@@ -173,3 +173,69 @@ def _exterior_fluid_boundary_nodes(
             continue
         boundary_nodes.update(face)
     return np.asarray(sorted(boundary_nodes), dtype=int)
+
+
+def build_integral_fluid_duct(
+    length: float = 1.0,
+    width: float = 0.2,
+    height: float = 0.1,
+    mesh_size: float = 0.05,
+) -> IntegralModel:
+    """Single fluid volume (no solid) for analytical Poiseuille-style benchmarks."""
+    gmsh.initialize()
+    gmsh.model.add("integral_duct")
+    try:
+        gmsh.model.occ.addBox(0, 0, 0, length, width, height)
+        gmsh.model.occ.synchronize()
+        volumes = gmsh.model.getEntities(3)
+        fluid_tags = [tag for dim, tag in volumes if dim == 3]
+        gmsh.model.addPhysicalGroup(3, fluid_tags, name="coolant")
+        gmsh.option.setNumber("Mesh.CharacteristicLengthMin", mesh_size)
+        gmsh.option.setNumber("Mesh.CharacteristicLengthMax", mesh_size)
+        gmsh.model.mesh.generate(3)
+        node_tags, coords, _ = gmsh.model.mesh.getNodes()
+        nodes = np.asarray(coords, dtype=float).reshape(-1, 3)
+        tag_to_index = {int(t): i for i, t in enumerate(node_tags)}
+        fluid_tets: list[list[int]] = []
+        elem_types, _, elem_node_tags = gmsh.model.mesh.getElements(3)
+        for etype, nodes_flat in zip(elem_types, elem_node_tags):
+            if int(etype) != 4:
+                continue
+            for row in np.asarray(nodes_flat, dtype=int).reshape(-1, 4):
+                fluid_tets.append([tag_to_index[int(n)] for n in row])
+        fluid_arr = np.asarray(fluid_tets, dtype=int)
+        boundary_nodes = _exterior_fluid_boundary_nodes(fluid_arr, nodes, np.zeros((0, 3), dtype=int))
+        regions = [
+            ExtractedRegion(tag=t, kind="fluid", volume_m3=length * width * height, component_id=t)
+            for t in fluid_tags
+        ]
+        validation = validate_gmsh_model_stats(
+            {"volumes": len(volumes), "surfaces": len(gmsh.model.getEntities(2)), "bbox_diagonal": float((length**2 + width**2 + height**2) ** 0.5)},
+            min_feature_length=mesh_size * 0.25,
+        )
+        extraction = FluidExtractionResult(
+            ok=validation.ok,
+            fluid_tags=fluid_tags,
+            solid_tags=[],
+            regions=regions,
+            validation=validation,
+            interface_surface_tags=[],
+            notes=["Integral fluid duct (no solid) for flow verification."],
+        )
+        mesh = IntegralMesh(
+            nodes=nodes,
+            fluid_tets=fluid_arr,
+            solid_tets=np.zeros((0, 4), dtype=int),
+            interface_triangles=np.zeros((0, 3), dtype=int),
+            boundary_fluid_nodes=boundary_nodes,
+            physical_groups={"coolant": fluid_tags},
+        )
+        return IntegralModel(
+            extraction=extraction,
+            mesh=mesh,
+            fin_x0=0.0,
+            fin_thickness=0.0,
+            fin_height=0.0,
+        )
+    finally:
+        gmsh.finalize()
