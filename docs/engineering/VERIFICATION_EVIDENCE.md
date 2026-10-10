@@ -20,7 +20,6 @@
 | `thermal_conduction_p1` | numerically_verified | `test_transient_diffusion_fourier_mode_decay` | Fourier decay | L2 err <0.08 after 5 steps |
 | `incompressible_p1_pspg_mixed_stokes` | numerically_verified | `test_pspg_periodic_channel_profile_and_divergence` | ux err < 5e-3, div L2 < 0.05 | τ=h²/(4ν); not Taylor–Hood |
 | `incompressible_p1_pspg_mixed_stokes` | numerically_verified | `test_pspg_manufactured_rhs_residual` | MMS ux L2 < 0.05 | linear solve residual < 1e-5 |
-| `developed_periodic_channel_flow` | numerically_verified | `test_developed_parabolic_profile_structured_duct` | Q rel err < 6% | trapezoid cross-section integration |
 | `conjugate_heat_transfer_p1` | numerically_verified | `test_two_material_steady_conduction_interface` | \|T−T_analytical\| < 1 K | Dirichlet elimination on x faces |
 | `conjugate_heat_transfer_p1` | numerically_verified | `test_integral_channel_interface_flux_opposite_signs` | \|Q_f+Q_s\|/max < 35% | coarse integral mesh |
 | `conjugate_heat_transfer_p1` | numerically_verified | `test_cht_transient_energy_balance_relative_residual` | rel residual < 2 | semi-implicit BE; `cht_energy.py` |
