@@ -23,7 +23,8 @@ def test_vtk_and_contour_exports(tmp_path: Path):
 
 def test_channel_3d_end_to_end(tmp_path: Path):
     result = run_channel_3d_case(tmp_path / "case")
-    assert result.connectivity_ok
+    assert result.preflight_ok
+    assert result.conservation_ok
     assert result.interface_triangles > 0
     assert result.vtk_path.exists()
     assert result.fr_element_family == "p1_tetrahedron"

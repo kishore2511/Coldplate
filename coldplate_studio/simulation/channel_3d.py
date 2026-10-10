@@ -7,9 +7,8 @@ from pathlib import Path
 
 import numpy as np
 
-from coldplate_studio.connectivity.diagnostics import run_connectivity_diagnostics
-from coldplate_studio.connectivity.graph import build_connectivity_from_extraction
-from coldplate_studio.connectivity.interface_maps import build_interface_connectivity
+from coldplate_studio.diagnostics.conservation import audit_conservation_report
+from coldplate_studio.diagnostics.preflight import run_integral_preflight
 from coldplate_studio.fr.solver3d import PhaseChangeConfig
 from coldplate_studio.fr.solver_integral import IntegralScalarThermalVOF3D, IntegralSolverConfig
 from coldplate_studio.mesh.integral_pipeline import build_integral_channel_model
@@ -25,17 +24,19 @@ class Channel3DRunResult:
     temperature_contour: Path
     vof_contour: Path
     connectivity_ok: bool
+    preflight_ok: bool
     interface_triangles: int
     fr_element_family: str
+    conservation_ok: bool
 
 
 def run_channel_3d_case(output_dir: Path) -> Channel3DRunResult:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     model = build_integral_channel_model(mesh_size=0.06)
-    graph = build_connectivity_from_extraction(model.extraction)
-    diag = run_connectivity_diagnostics(graph)
-    iface = build_interface_connectivity(model.mesh)
+    preflight = run_integral_preflight(model)
+    if not preflight.ok:
+        raise RuntimeError(f"Pre-solve preflight failed: {preflight.items}")
     mesh = model.mesh
     nodes = mesh.nodes
     n = nodes.shape[0]
@@ -72,6 +73,7 @@ def run_channel_3d_case(output_dir: Path) -> Channel3DRunResult:
     for _ in range(6):
         solver.step_rk4(dt)
     final = solver.conservation_report()
+    cons_audit = audit_conservation_report(final)
     vtk_path = output_dir / "channel_integral.vtk"
     write_vtk_unstructured_tets(
         vtk_path,
@@ -102,7 +104,9 @@ def run_channel_3d_case(output_dir: Path) -> Channel3DRunResult:
         vtk_path=vtk_path,
         temperature_contour=t_png,
         vof_contour=a_png,
-        connectivity_ok=diag.ok and iface.total_area_m2 > 0,
+        connectivity_ok=preflight.ok,
+        preflight_ok=preflight.ok,
         interface_triangles=int(mesh.interface_triangles.shape[0]),
         fr_element_family=mesh.fr_element_family,
+        conservation_ok=cons_audit.ok,
     )
