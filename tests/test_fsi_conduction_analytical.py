@@ -11,10 +11,9 @@ from coldplate_studio.fr.thermal_p1 import (
 from coldplate_studio.mesh.two_material_bar import build_two_material_tet_bar
 
 
-@pytest.mark.parametrize("nx", [8, 16])
-def test_two_material_fsi_conduction_interface_flux_matches_series_solution(nx: int):
+@pytest.mark.parametrize("nx,k1,k2", [(8, 1.0, 5.0), (16, 1.0, 5.0), (24, 2.0, 20.0)])
+def test_two_material_fsi_conduction_interface_flux_matches_series_solution(nx: int, k1: float, k2: float):
     """1D composite bar: T(0)=300 K, T(L)=400 K, k1≠k2; ∫ q·n dA matches series formula."""
-    k1, k2 = 1.0, 5.0
     height, width = 0.1, 0.1
     model = build_two_material_tet_bar(nx=nx, height=height, width=width)
     mesh = model.mesh

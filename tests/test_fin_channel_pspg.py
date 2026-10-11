@@ -38,8 +38,12 @@ def test_fin_channel_pspg_refinement_table_recorded():
                 r.solver_residual_norm,
             )
         )
-    # v0.3.1: normal-aligned port faces + PSPG β=100 → ~5% at mesh_size=0.08
+    # v0.4.1: scaled β + fluid-only pressure — same port-flux table as v0.4 at 0.08
     ref = next(x for x in rows if x[0] == 0.08)
+    coarse = next(x for x in rows if x[0] == 0.12)
+    fine = next(x for x in rows if x[0] == 0.06)
     assert ref[4] < 0.12
     assert ref[2] > 400
     assert ref[3] < 0.005
+    assert coarse[4] > 0.5
+    assert fine[4] > 0.5

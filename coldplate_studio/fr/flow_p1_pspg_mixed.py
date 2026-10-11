@@ -5,7 +5,9 @@ Weak form:
   ν ∫ ∇u·∇v dΩ − ∫ p ∇·v dΩ = ∫ f·v dΩ
   ∫ q ∇·u dΩ + τ ∫ ∇q·∇p dΩ = 0   (PSPG, τ = h²/(4ν))
 
-Pressure reference: pin one pressure DOF to 0.
+Pressure reference: pin one fluid pressure DOF to 0 when ``fluid_pressure_only=True``
+(pressure unknowns live only on fluid nodes; solid-only nodes are not in the pressure block).
+Legacy full-node pressure + solid p=0 pins: ``fluid_pressure_only=False``.
 """
 
 from __future__ import annotations
@@ -94,14 +96,28 @@ def solve_stokes_pspg(
     inlet_pressure: float | None = None,
     outlet_pressure: float | None = None,
     inlet_velocity_dirichlet: dict[int, tuple[float, float, float]] | None = None,
+    fluid_pressure_only: bool = True,
 ) -> PSPGStokesResult:
     n = mesh.nodes.shape[0]
     dim_u = 3 * n
-    d = assemble_weak_divergence(mesh)
+    d_full = assemble_weak_divergence(mesh)
     k_u = assemble_viscous_stiffness(mesh, nu)
     if momentum_grad_div_beta > 0.0:
         k_u = k_u + assemble_divergence_penalty(mesh, momentum_grad_div_beta)
-    lp = assemble_pressure_laplacian(mesh)
+    lp_full = assemble_pressure_laplacian(mesh)
+    fluid_idx = np.array(sorted(np.where(fluid_node_mask(mesh))[0]), dtype=int)
+    if fluid_pressure_only:
+        d = d_full[fluid_idx, :]
+        lp = lp_full[fluid_idx, :][:, fluid_idx]
+        n_p = fluid_idx.size
+        pin_p_nodes = {int(pressure_pin_node)}
+    else:
+        d = d_full
+        lp = lp_full
+        n_p = n
+        pin_p_nodes = {int(pressure_pin_node)}
+        if pressure_pin_nodes_extra:
+            pin_p_nodes |= {int(i) for i in pressure_pin_nodes_extra}
     h = _mean_mesh_length(mesh)
     tau = (h**2) / (4.0 * nu)
     a = sparse.bmat(
@@ -111,7 +127,7 @@ def solve_stokes_pspg(
         ],
         format="lil",
     )
-    rhs = np.zeros(dim_u + n)
+    rhs = np.zeros(dim_u + n_p)
     rhs[:dim_u] = _body_force_rhs(mesh, n, force_x)
     area_vecs = fluid_boundary_outward_area_vectors(mesh)
     if inlet_faces is not None and inlet_pressure is not None:
@@ -141,10 +157,10 @@ def solve_stokes_pspg(
                 a[:, dof] = 0
                 a[dof, dof] = 1.0
                 rhs[dof] = val
-    pin_p = {int(pressure_pin_node)}
-    if pressure_pin_nodes_extra:
-        pin_p |= {int(i) for i in pressure_pin_nodes_extra}
-    for pnode in sorted(pin_p):
+    if fluid_pressure_only:
+        pin_local = int(np.where(fluid_idx == int(pressure_pin_node))[0][0])
+        pin_p_nodes = {pin_local}
+    for pnode in sorted(pin_p_nodes):
         p_row = dim_u + pnode
         a[p_row, :] = 0
         a[:, p_row] = 0
@@ -152,10 +168,18 @@ def solve_stokes_pspg(
         rhs[p_row] = 0.0
     sol = spsolve(a.tocsr(), rhs)
     u_flat = sol[:dim_u]
-    pressure = sol[dim_u:]
+    p_red = sol[dim_u:]
+    pressure = np.zeros(n)
+    if fluid_pressure_only:
+        pressure[fluid_idx] = p_red
+    else:
+        pressure = p_red
     velocity = unflat_velocity(u_flat, n)
     div_l2 = discrete_divergence_l2(mesh, velocity)
-    p_res = float(np.linalg.norm(d @ u_flat) / max(np.linalg.norm(u_flat), 1e-12))
+    if fluid_pressure_only:
+        p_res = float(np.linalg.norm(d_full[fluid_idx, :] @ u_flat) / max(np.linalg.norm(u_flat), 1e-12))
+    else:
+        p_res = float(np.linalg.norm(d @ u_flat) / max(np.linalg.norm(u_flat), 1e-12))
     res = float(np.linalg.norm(a @ sol - rhs) / max(np.linalg.norm(rhs), 1e-12))
     fluid = fluid_node_mask(mesh)
     umax = float(np.max(np.linalg.norm(velocity[fluid], axis=1))) if fluid.any() else 0.0
@@ -214,8 +238,8 @@ def solve_integral_channel_pspg(
     from coldplate_studio.fr.flow_stabilization import scaled_grad_div_beta
     from coldplate_studio.simulation.flow_inlet_profile import parabolic_inlet_ux
 
-    solid_pins = set(int(i) for i in boundaries.solid_only_nodes)
-    pin_extra: set[int] = solid_pins
+    pin_extra: set[int] | None = set(int(i) for i in boundaries.solid_only_nodes)
+    use_fluid_p = drive != "body_force_legacy" or scale_grad_div_with_mesh
     inlet_vel: dict[int, tuple[float, float, float]] | None = None
     force_x = 0.0
     beta = 0.0
@@ -239,7 +263,8 @@ def solve_integral_channel_pspg(
         force_x=force_x,
         pinned_velocity_nodes=boundaries.pinned_velocity_nodes,
         pressure_pin_node=boundaries.fluid_pressure_reference_node,
-        pressure_pin_nodes_extra=pin_extra,
+        pressure_pin_nodes_extra=pin_extra if not use_fluid_p else None,
+        fluid_pressure_only=use_fluid_p,
         momentum_grad_div_beta=beta,
         inlet_faces=boundaries.inlet_faces,
         outlet_faces=boundaries.outlet_faces,

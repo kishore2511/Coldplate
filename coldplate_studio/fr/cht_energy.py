@@ -21,6 +21,7 @@ class EnergyBalanceReport:
     boundary_heat_out_w: float
     residual_w: float
     relative_residual: float
+    interface_flux_fluid_implied_w: float = 0.0
 
 
 def nodal_stored_energy(mesh: IntegralMesh, temperature: np.ndarray, rho_cp_fluid: float, rho_cp_solid: float) -> float:
@@ -70,6 +71,7 @@ def transient_energy_balance(
     # BE: ΔE/dt ≈ -Q_interface + net enthalpy flux (sign convention documented)
     residual = delta / dt - (qf + qs) - (phi_in - phi_out) - solid_volumetric_heat_w
     scale = max(abs(delta / dt), abs(qf), abs(phi_in), abs(solid_volumetric_heat_w), 1e-12)
+    qf_implied = float(-(qs + delta / dt - (phi_in - phi_out) - solid_volumetric_heat_w))
     return EnergyBalanceReport(
         stored_energy_j=e_new,
         stored_energy_prev_j=e_prev,
@@ -80,4 +82,5 @@ def transient_energy_balance(
         boundary_heat_out_w=phi_out,
         residual_w=float(residual),
         relative_residual=float(abs(residual) / scale),
+        interface_flux_fluid_implied_w=qf_implied,
     )

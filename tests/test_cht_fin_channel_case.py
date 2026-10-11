@@ -17,3 +17,5 @@ def test_fin_channel_cht_nonzero_interface_flux_with_volumetric_source():
     assert abs(case.interface_flux_solid_w) > 1e-4
     assert case.energy_relative_residual < 0.35
     assert case.solid_temperature_max_k > 300.01
+    assert case.solid_volumetric_heat_w > 1.0
+    assert abs(case.interface_flux_fluid_implied_w) > 1e-6

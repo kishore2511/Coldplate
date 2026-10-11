@@ -5,7 +5,7 @@
 | Component | Discretization | Notes |
 |-----------|----------------|-------|
 | Steady Stokes (verification) | P1–P1 mixed + PSPG (τ = h²/(4ν)) | `flow_p1_pspg_mixed.py`; pressure pin |
-| Steady Stokes (fin channel, production) | PSPG + body force + grad-div β(h)=β_ref(h_ref/h)² | `flow_stabilization.scaled_grad_div_beta`; β_ref=100; legacy fixed β via `pspg_legacy_body_force` |
+| Steady Stokes (fin channel, production) | PSPG + body force + grad-div β(h)=β_ref(h_ref/h)² | `flow_stabilization.scaled_grad_div_beta`; β_ref=100; **pressure DOFs on fluid nodes only** (`fluid_pressure_only=True`); legacy fixed β via `pspg_legacy_body_force` |
 | Steady Stokes (fin channel, legacy) | P1 + grad-div penalty | `formulation="penalty"`; regression |
 | Transient | Chorin–Temam projection on P1 | Lumped div → Poisson; γP stabilization |
 | High-order FR momentum | **Not implemented** | 1D/hex FR remain verification-only |
@@ -29,4 +29,4 @@
 
 ## Fin channel (realistic)
 
-Integral fin channel — **not** Poiseuille; v0.3.1 aligned ports + PSPG β=100 → ~5% imbalance at mesh_size=0.08 (see `FIN_CHANNEL_V031.md`).
+Integral fin channel — **not** Poiseuille; v0.4.1 aligned ports + scaled β + fluid-only pressure → ~5% imbalance at mesh_size=0.08 only; 0.12 and 0.06 fail 20% gate (see `FIN_CHANNEL_V041.md`). Mass imbalance: |Φ_in+Φ_out|/mean(|Φ_in|,|Φ_out|).

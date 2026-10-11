@@ -17,6 +17,7 @@ from coldplate_studio.fr.cht_transient import (
     ThermalBoundaryConditions,
     ThermalMaterialProperties,
 )
+from coldplate_studio.fr.thermal_p1 import interface_flux_imbalance
 from coldplate_studio.mesh.integral_model import IntegralModel
 from coldplate_studio.simulation.flow_channel_boundaries import (
     channel_port_fluid_nodes,
@@ -34,7 +35,12 @@ class FinChannelCHTCaseResult:
     interface_flux_fluid_w: float
     interface_flux_solid_w: float
     interface_flux_imbalance: float
+    interface_flux_fluid_implied_w: float
+    interface_flux_side_ratio: float
     energy_relative_residual: float
+    delta_stored_energy_j: float
+    enthalpy_in_w: float
+    enthalpy_out_w: float
     solid_volumetric_heat_w: float
     inlet_nodes_count: int
 
@@ -90,15 +96,22 @@ def run_fin_channel_cht_case(
     fluid_mask = cht.fluid_mask
     solid_mask = cht.solid_mask
     t = cht.state.temperature
+    qf, qs = diag.interface_flux_fluid_w, diag.interface_flux_solid_w
+    side_ratio = min(abs(qf), abs(qs)) / max(abs(qf), abs(qs), 1e-12)
     case = FinChannelCHTCaseResult(
         fluid_temperature_min_k=float(np.min(t[fluid_mask])) if fluid_mask.any() else inlet_temperature_k,
         fluid_temperature_max_k=float(np.max(t[fluid_mask])) if fluid_mask.any() else inlet_temperature_k,
         solid_temperature_min_k=float(np.min(t[solid_mask])) if solid_mask.any() else solid_base_temperature_k,
         solid_temperature_max_k=float(np.max(t[solid_mask])) if solid_mask.any() else solid_base_temperature_k,
-        interface_flux_fluid_w=diag.interface_flux_fluid_w,
-        interface_flux_solid_w=diag.interface_flux_solid_w,
-        interface_flux_imbalance=diag.interface_flux_imbalance,
+        interface_flux_fluid_w=qf,
+        interface_flux_solid_w=qs,
+        interface_flux_imbalance=interface_flux_imbalance(qf, qs),
+        interface_flux_fluid_implied_w=bal.interface_flux_fluid_implied_w,
+        interface_flux_side_ratio=float(side_ratio),
         energy_relative_residual=bal.relative_residual,
+        delta_stored_energy_j=bal.delta_stored_j,
+        enthalpy_in_w=bal.boundary_heat_in_w,
+        enthalpy_out_w=bal.boundary_heat_out_w,
         solid_volumetric_heat_w=q_vol_w,
         inlet_nodes_count=int(inlet.size),
     )

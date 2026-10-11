@@ -67,11 +67,29 @@ def channel_port_fluid_nodes(
 
 
 def solid_base_dirichlet_nodes(mesh, z_tol: float = 0.005) -> np.ndarray:
-    """Solid nodes on the z=0 cold-face plane (integral fin base)."""
-    fluid_mask = fluid_node_mask(mesh)
+    """
+    Cold-plate Dirichlet nodes on solid-only mesh nodes (not shared FSI nodes).
+
+    Shared interface nodes stay in the coupled temperature field; pinning them would
+    block fluid-to-solid conduction. When no solid-only nodes lie on z=0, use the
+    lowest solid-only z-plane (typical thin fin on integral mesh).
+    """
+    from coldplate_studio.fr.thermal_p1 import region_masks
+
+    fluid_mask, solid_mask = region_masks(mesh)
+    solid_only = solid_mask & ~fluid_mask
     z = mesh.nodes[:, 2]
+    base = np.array(
+        [i for i in range(mesh.nodes.shape[0]) if solid_only[i] and float(z[i]) <= z_tol],
+        dtype=int,
+    )
+    if base.size > 0:
+        return base
+    if not np.any(solid_only):
+        return np.zeros(0, dtype=int)
+    z_min = float(np.min(z[solid_only]))
     return np.array(
-        [i for i in range(mesh.nodes.shape[0]) if not fluid_mask[i] and float(z[i]) <= z_tol],
+        [i for i in range(mesh.nodes.shape[0]) if solid_only[i] and abs(float(z[i]) - z_min) <= z_tol],
         dtype=int,
     )
 
