@@ -17,6 +17,7 @@ from coldplate_studio.fr.cht_transient import (
     ThermalBoundaryConditions,
     ThermalMaterialProperties,
 )
+from coldplate_studio.fr.thermal_interface_flux import interface_flux_report
 from coldplate_studio.fr.thermal_p1 import interface_flux_imbalance
 from coldplate_studio.mesh.integral_model import IntegralModel
 from coldplate_studio.simulation.flow_channel_boundaries import (
@@ -37,6 +38,9 @@ class FinChannelCHTCaseResult:
     interface_flux_imbalance: float
     interface_flux_fluid_implied_w: float
     interface_flux_side_ratio: float
+    galerkin_flux_fluid_w: float
+    galerkin_flux_solid_w: float
+    galerkin_flux_imbalance: float
     energy_relative_residual: float
     delta_stored_energy_j: float
     enthalpy_in_w: float
@@ -97,6 +101,7 @@ def run_fin_channel_cht_case(
     solid_mask = cht.solid_mask
     t = cht.state.temperature
     qf, qs = diag.interface_flux_fluid_w, diag.interface_flux_solid_w
+    flux_rep = interface_flux_report(mesh, t, props.k_fluid, props.k_solid)
     side_ratio = min(abs(qf), abs(qs)) / max(abs(qf), abs(qs), 1e-12)
     case = FinChannelCHTCaseResult(
         fluid_temperature_min_k=float(np.min(t[fluid_mask])) if fluid_mask.any() else inlet_temperature_k,
@@ -108,6 +113,9 @@ def run_fin_channel_cht_case(
         interface_flux_imbalance=interface_flux_imbalance(qf, qs),
         interface_flux_fluid_implied_w=bal.interface_flux_fluid_implied_w,
         interface_flux_side_ratio=float(side_ratio),
+        galerkin_flux_fluid_w=float(flux_rep["galerkin_flux_fluid_w"]),
+        galerkin_flux_solid_w=float(flux_rep["galerkin_flux_solid_w"]),
+        galerkin_flux_imbalance=float(flux_rep["galerkin_imbalance"]),
         energy_relative_residual=bal.relative_residual,
         delta_stored_energy_j=bal.delta_stored_j,
         enthalpy_in_w=bal.boundary_heat_in_w,

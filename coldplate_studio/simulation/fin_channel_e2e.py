@@ -64,7 +64,7 @@ def run_fin_channel_e2e(
             f"Port face integrity failed: inlet={len(boundaries.inlet_faces)} outlet={len(boundaries.outlet_faces)}"
         )
 
-    flow_run = run_channel_flow(model, formulation="pspg")
+    flow_run = run_channel_flow(model, formulation="p2p1")
     flow_gates = evaluate_flow_gates(flow_run)
 
     refinement_rows = (
@@ -129,6 +129,9 @@ def run_fin_channel_e2e(
             "interface_flux_solid_w": case.interface_flux_solid_w,
             "interface_flux_imbalance": case.interface_flux_imbalance,
             "interface_flux_side_ratio": case.interface_flux_side_ratio,
+            "galerkin_flux_fluid_w": case.galerkin_flux_fluid_w,
+            "galerkin_flux_solid_w": case.galerkin_flux_solid_w,
+            "galerkin_flux_imbalance": case.galerkin_flux_imbalance,
             "interface_flux_fluid_implied_w": case.interface_flux_fluid_implied_w,
             "delta_stored_energy_j": case.delta_stored_energy_j,
             "enthalpy_in_w": case.enthalpy_in_w,

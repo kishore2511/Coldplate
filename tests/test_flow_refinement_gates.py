@@ -13,17 +13,13 @@ def test_fin_channel_flow_refinement_gates_documented():
     """
     Mass imbalance definition: |Φ_in + Φ_out| / mean(|Φ_in|, |Φ_out|) with outward-normal port fluxes.
 
-    v0.4.1 (scaled β, fluid-only pressure): only mesh_size=0.08 passes the 20% gate; coarser/finer
-    levels remain documented failures (not retuned β_ref).
+    v0.5 Taylor–Hood P2–P1 production path: mass imbalance ≤20% on all three fin meshes in recorded study.
     """
-    rows = run_fin_channel_flow_refinement((0.12, 0.08, 0.06))
+    rows = run_fin_channel_flow_refinement((0.12, 0.08, 0.06), formulation="p2p1")
     by_size = {r.mesh_size: r for r in rows}
-    assert by_size[0.08].flow_gates_ok
-    assert not by_size[0.12].flow_gates_ok
-    assert not by_size[0.06].flow_gates_ok
-    assert by_size[0.08].mass_flux_relative_imbalance < 0.12
-    assert by_size[0.12].mass_flux_relative_imbalance > 0.5
-    assert by_size[0.06].mass_flux_relative_imbalance > 0.5
     for ms in (0.12, 0.08, 0.06):
-        run = run_channel_flow(build_integral_channel_model(mesh_size=ms), formulation="pspg")
+        assert by_size[ms].mass_flux_relative_imbalance < 0.20
+        assert by_size[ms].flow_gates_ok
+    for ms in (0.12, 0.08, 0.06):
+        run = run_channel_flow(build_integral_channel_model(mesh_size=ms), formulation="p2p1")
         assert evaluate_flow_gates(run).ok == by_size[ms].flow_gates_ok

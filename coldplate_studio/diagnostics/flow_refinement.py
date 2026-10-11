@@ -30,7 +30,7 @@ class FlowRefinementRow:
 def run_fin_channel_flow_refinement(
     mesh_sizes: tuple[float, ...] = (0.12, 0.08, 0.06),
     *,
-    formulation: str = "pspg",
+    formulation: str = "p2p1",
 ) -> list[FlowRefinementRow]:
     rows: list[FlowRefinementRow] = []
     for ms in mesh_sizes:

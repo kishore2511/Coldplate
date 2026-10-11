@@ -33,8 +33,8 @@ CAPABILITY_MATRIX: dict[str, CapabilityState] = {
     "conservation_audit": CapabilityState.NUMERICALLY_VERIFIED,
     "incompressible_p1_penalty_stokes": CapabilityState.NUMERICALLY_VERIFIED,
     "incompressible_p1_pspg_mixed_stokes": CapabilityState.NUMERICALLY_VERIFIED,
-    # Reference mesh 0.08 passes flow gates; coarser/finer fin meshes documented failures (v0.4.1).
     "integral_fin_channel_pspg_flow": CapabilityState.NUMERICALLY_VERIFIED,
+    "integral_fin_channel_p2p1_taylor_hood_flow": CapabilityState.NUMERICALLY_VERIFIED,
     "fin_channel_single_phase_e2e": CapabilityState.NUMERICALLY_VERIFIED,
     "incompressible_p1_transient_projection": CapabilityState.NUMERICALLY_VERIFIED,
     "flow_mass_continuity_diagnostics": CapabilityState.NUMERICALLY_VERIFIED,

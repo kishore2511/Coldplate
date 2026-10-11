@@ -5,7 +5,8 @@
 | Component | Discretization | Notes |
 |-----------|----------------|-------|
 | Steady Stokes (verification) | P1–P1 mixed + PSPG (τ = h²/(4ν)) | `flow_p1_pspg_mixed.py`; pressure pin |
-| Steady Stokes (fin channel, production) | PSPG + body force + grad-div β(h)=β_ref(h_ref/h)² | `flow_stabilization.scaled_grad_div_beta`; β_ref=100; **pressure DOFs on fluid nodes only** (`fluid_pressure_only=True`); legacy fixed β via `pspg_legacy_body_force` |
+| Steady Stokes (fin channel, **production v0.5**) | **Taylor–Hood P2–P1** mixed | `flow_p2p1_stokes.py`; quadratic velocity on fluid edges+vertices; LSQR saddle solve |
+| Steady Stokes (fin channel, legacy) | PSPG + body force + grad-div β(h)=β_ref(h_ref/h)² | `formulation="pspg"`; see v0.4.1 notes |
 | Steady Stokes (fin channel, legacy) | P1 + grad-div penalty | `formulation="penalty"`; regression |
 | Transient | Chorin–Temam projection on P1 | Lumped div → Poisson; γP stabilization |
 | High-order FR momentum | **Not implemented** | 1D/hex FR remain verification-only |
@@ -15,9 +16,9 @@
 **Pros:** inf-sup stable, standard for incompressible tet/hex.  
 **Cons:** requires P2 mesh/order, face DOFs, separate pressure space — not yet wired to Gmsh integral export.
 
-**Decision:** Implement **PSPG P1–P1 mixed Stokes** for verification benchmarks (no arbitrary β as sole incompressibility mechanism). Keep penalty Stokes for fin-channel regression only. Taylor–Hood P2–P1 remains the planned upgrade when P2 Gmsh export exists (ADR TBD).
+**v0.5:** **Taylor–Hood P2–P1** implemented on P1 Gmsh meshes via subparametric elevation (edge midpoint DOFs). PSPG P1–P1 remains for regression (`formulation="pspg"`).
 
-**Why not Taylor–Hood now:** current production mesh is P1-only from Gmsh; P2 velocity spaces and inf-sup DOF bookkeeping are not wired. PSPG reuses existing P1 operators (`assemble_weak_divergence`, viscous K, pressure Laplacian).
+**FR high-order:** still verification-only (1D/hex); not production incompressible flow.
 
 ## Developed-channel benchmark
 
@@ -29,4 +30,4 @@
 
 ## Fin channel (realistic)
 
-Integral fin channel — **not** Poiseuille; v0.4.1 aligned ports + scaled β + fluid-only pressure → ~5% imbalance at mesh_size=0.08 only; 0.12 and 0.06 fail 20% gate (see `FIN_CHANNEL_V041.md`). Mass imbalance: |Φ_in+Φ_out|/mean(|Φ_in|,|Φ_out|).
+Integral fin channel — v0.5 P2–P1 passes mass and divergence gates on mesh sizes 0.12, 0.08, 0.06 (see `FIN_CHANNEL_V05.md`).

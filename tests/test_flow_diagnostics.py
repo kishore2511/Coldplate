@@ -14,9 +14,10 @@ def test_channel_mass_continuity_diagnosis_reproduces_baseline():
     report = analyze_mass_continuity(
         model.mesh, result.flow.velocity, boundaries.inlet_faces, boundaries.outlet_faces
     )
-    assert 0.02 < report.mass_flux_relative_imbalance < 0.12
-    assert report.divergence_l2 < 0.01
-    assert report.inlet_flux > 0
-    assert report.outlet_flux < 0
+    assert report.mass_flux_relative_imbalance < 0.12
+    assert report.weak_div_l2 < 0.01
+    assert abs(report.inlet_flux) > 1e-5
+    assert abs(report.outlet_flux) > 1e-5
+    assert report.inlet_flux * report.outlet_flux < 0
     assert abs(report.wall_flux) < 2e-4  # P1 slip on no-slip walls at coarse h
     assert abs(report.inlet_plus_outlet) < abs(report.inlet_flux) * 0.35

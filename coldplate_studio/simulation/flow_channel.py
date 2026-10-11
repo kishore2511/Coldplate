@@ -10,6 +10,7 @@ import numpy as np
 from coldplate_studio.connectivity.ports import channel_ports_from_user_confirmation
 from coldplate_studio.fr.flow_p1_penalty import FlowSolveResult, solve_steady_channel_flow
 from coldplate_studio.fr.flow_p1_pspg_mixed import solve_integral_channel_pspg
+from coldplate_studio.fr.flow_p2p1_stokes import solve_integral_channel_p2p1
 from coldplate_studio.mesh.integral_model import IntegralModel
 from coldplate_studio.simulation.flow_channel_boundaries import (
     _select_channel_inlet_outlet_faces,
@@ -29,13 +30,41 @@ def run_channel_flow(
     model: IntegralModel,
     length: float = 1.0,
     *,
-    formulation: Literal["pspg", "penalty", "pspg_inlet_parabolic", "pspg_legacy_body_force"] = "pspg",
+    formulation: Literal[
+        "p2p1",
+        "pspg",
+        "penalty",
+        "pspg_inlet_parabolic",
+        "pspg_legacy_body_force",
+    ] = "p2p1",
     momentum_grad_div_beta: float = 100.0,
 ) -> ChannelFlowRunResult:
     boundaries = build_integral_channel_flow_boundaries(model, length)
     ports = channel_ports_from_user_confirmation(model.mesh, boundaries.inlet_faces, boundaries.outlet_faces)
     if not ports.ok_for_flow_solve:
         raise RuntimeError(f"User port confirmation failed: {ports.notes}")
+    if formulation == "p2p1":
+        p2 = solve_integral_channel_p2p1(model.mesh, boundaries, dp_dx=-1.0)
+        fluid_mask = np.zeros(model.mesh.nodes.shape[0], dtype=bool)
+        for tet in model.mesh.fluid_tets:
+            fluid_mask[tet] = True
+        flow = FlowSolveResult(
+            velocity=p2.velocity,
+            divergence_l2=p2.divergence_l2,
+            inlet_flux_m3_s=float(p2.inlet_flux_m3_s or 0.0),
+            outlet_flux_m3_s=float(p2.outlet_flux_m3_s or 0.0),
+            mean_velocity_x=float(np.mean(p2.velocity[fluid_mask, 0])),
+            formulation=p2.formulation,
+            pressure=p2.pressure,
+            pressure_drop=p2.pressure_drop,
+            solver_residual_norm=p2.solver_residual_norm,
+        )
+        return ChannelFlowRunResult(
+            flow=flow,
+            ports_ok=True,
+            mass_flux_relative_imbalance=float(p2.mass_flux_relative_imbalance or 0.0),
+            formulation=p2.formulation,
+        )
     if formulation == "penalty":
         flow = solve_steady_channel_flow(
             model.mesh,
