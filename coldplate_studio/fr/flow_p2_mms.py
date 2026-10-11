@@ -290,6 +290,89 @@ def run_p2p1_parabolic_channel_mms_study(
     return reports
 
 
+def run_p2p1_polynomial_channel_mms(
+    *,
+    height: float = 0.1,
+    width: float = 0.2,
+    length: float = 1.0,
+    nu: float = 1e-3,
+    grad_p: float = -1.0,
+    ny_levels: tuple[int, ...] = (2, 4, 8),
+) -> list[P2MMSReport]:
+    """
+    u_x = y (H−y) is in P2, div-free, p = grad_p * x is in P1.
+
+    Dirichlet data is the exact trace (nonzero on x/z faces). This is the
+    acceptance MMS for pressure: the sin-π box field is not in the FE space.
+    """
+    from coldplate_studio.fr.flow_p1_operators import fluid_node_mask
+    from coldplate_studio.fr.flow_p2_dof_map import build_p2_velocity_dof_map, pressure_dofs_on_fluid_vertices
+    from coldplate_studio.fr.flow_p2p1_stokes import solve_p2p1_stokes
+    from coldplate_studio.mesh.structured_tet_box import build_structured_fluid_box
+
+    reports: list[P2MMSReport] = []
+    for ny in ny_levels:
+        h = height / ny
+        model = build_structured_fluid_box(nx=4, ny=ny, nz=2, length=length, width=width, height=height)
+        mesh = model.mesh
+        walls = set(int(i) for i in mesh.boundary_fluid_nodes)
+        pin = int(mesh.fluid_tets[0, 0])
+
+        def u_exact_vec(x: np.ndarray) -> np.ndarray:
+            out = np.zeros(3)
+            out[0] = float(x[1]) * (height - float(x[1]))
+            return out
+
+        def force_at(x: np.ndarray) -> np.ndarray:
+            # ∂²u_x/∂y² = -2, f = −ν Δu + ∇p
+            return np.array([-nu * (-2.0) + grad_p, 0.0, 0.0])
+
+        r = solve_p2p1_stokes(
+            mesh,
+            nu=nu,
+            mms_force_at_point=force_at,
+            dirichlet_velocity_at_point=u_exact_vec,
+            pinned_velocity_nodes=walls,
+            no_slip_nodes=walls,
+            pressure_pin_node=pin,
+        )
+        u_ex = np.zeros_like(mesh.nodes)
+        u_ex[:, 0] = mesh.nodes[:, 1] * (height - mesh.nodes[:, 1])
+        fluid = fluid_node_mask(mesh)
+        ux_l2 = float(np.sqrt(np.mean((r.velocity[fluid, 0] - u_ex[fluid, 0]) ** 2)))
+        dof_map = build_p2_velocity_dof_map(mesh, fluid)
+        ux_vol = volume_l2_velocity_error(
+            mesh, dof_map, r.p2_velocity_field.coefficients, u_ex, u_exact_at_point=u_exact_vec
+        )
+        p_ex = manufactured_pressure_field(mesh.nodes, grad_p=grad_p)
+        p_nodes = pressure_dofs_on_fluid_vertices(fluid)
+        # Boundary pressure DOFs whose velocity support is fully Dirichlet are not
+        # controlled by the saddle (LSQR sets them to 0). Score interior vertices.
+        interior = [int(i) for i in p_nodes if int(i) not in walls]
+        p_shift = float(p_ex[pin])
+        p_h = r.pressure[interior]
+        p_ref = p_ex[interior] - p_shift
+        p_l2 = float(np.sqrt(np.mean((p_h - p_ref) ** 2)))
+        p_norm = float(np.sqrt(np.mean(p_ref**2)))
+        reports.append(
+            P2MMSReport(
+                mesh_level=ny,
+                velocity_dofs=r.velocity_dofs,
+                pressure_dofs=r.pressure_dofs,
+                ux_l2=ux_l2,
+                ux_l2_volume_p2=ux_vol,
+                ux_h1_semi=0.0,
+                p_l2_mean_zero=p_l2,
+                p_l2_relative=p_l2 / max(p_norm, 1e-30),
+                divergence_l2=r.divergence_l2,
+                solver_residual=r.solver_residual_norm,
+                solver_method=r.solver_method,
+                h_eff=h,
+            )
+        )
+    return reports
+
+
 def estimate_ux_volume_convergence_order(reports: list[P2MMSReport]) -> float | None:
     """Observed order from last two mesh levels using ``ux_l2_volume_p2``."""
     if len(reports) < 2:

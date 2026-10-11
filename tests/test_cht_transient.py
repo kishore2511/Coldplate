@@ -12,8 +12,13 @@ def test_cht_integral_channel_energy_increases_with_hot_inlet():
     from coldplate_studio.simulation.flow_channel import run_channel_flow
 
     run = run_channel_flow(model)
-    velocity = run.flow.velocity
-    inlet_nodes = np.array([i for i in model.mesh.boundary_fluid_nodes if model.mesh.nodes[i, 0] < 0.02], dtype=int)
+    from coldplate_studio.simulation.flow_channel_boundaries import (
+        build_integral_channel_flow_boundaries,
+        channel_port_fluid_nodes,
+    )
+
+    boundaries = build_integral_channel_flow_boundaries(model)
+    inlet_nodes, _outlet = channel_port_fluid_nodes(boundaries)
     solid_nodes = {int(t) for tet in model.mesh.solid_tets for t in tet}
     outer_solid = np.array(
         [i for i in solid_nodes if model.mesh.nodes[i, 2] > 0.08],
@@ -21,12 +26,18 @@ def test_cht_integral_channel_energy_increases_with_hot_inlet():
     )
     props = ThermalMaterialProperties()
     bcs = ThermalBoundaryConditions(
-        fluid_inlet_nodes=inlet_nodes[: min(5, len(inlet_nodes))],
+        fluid_inlet_nodes=inlet_nodes,
         fluid_inlet_temperature_k=360.0,
         solid_outer_nodes=outer_solid[: min(5, len(outer_solid))] if outer_solid.size else inlet_nodes[:1],
         solid_outer_temperature_k=300.0,
     )
-    solver = ConjugateHeatTransferSolver(model.mesh, velocity, props, bcs)
+    solver = ConjugateHeatTransferSolver(
+        model.mesh,
+        run.flow.velocity,
+        props,
+        bcs,
+        p2_velocity_field=run.flow.p2_velocity_field,
+    )
     e0 = solver.diagnostics().total_energy_j
     for _ in range(3):
         solver.step(0.05)

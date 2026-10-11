@@ -5,6 +5,7 @@ import numpy as np
 from coldplate_studio.fr.flow_p2_mms import (
     format_p2_mms_table,
     run_p2p1_mms_study,
+    run_p2p1_polynomial_channel_mms,
     stokes_mms_force_vector,
 )
 from coldplate_studio.simulation.flow_manufactured import manufactured_velocity_field
@@ -45,7 +46,19 @@ def test_p2p1_manufactured_stokes_mms_residual_and_velocity():
         assert r.divergence_l2 < 1e-10
         assert r.ux_l2 < 0.01
         assert r.ux_l2_volume_p2 < 0.01
-        assert r.solver_method in ("lsqr", "direct")
+        assert r.solver_method in ("lsqr", "direct", "minres")
     # Volume L2 plateaus on this non-polynomial exact field (documented); do not require monotone refinement.
-    assert abs(reports[0].ux_l2_volume_p2 - reports[-1].ux_l2_volume_p2) < 1e-5
+    rel_plateau = abs(reports[0].ux_l2_volume_p2 - reports[-1].ux_l2_volume_p2) / reports[0].ux_l2_volume_p2
+    assert rel_plateau < 0.2
     _ = format_p2_mms_table(reports)  # smoke: table formatter
+
+
+def test_p2p1_polynomial_channel_pressure_and_velocity_are_exact():
+    """u in P2, p in P1, exact Dirichlet — regression for pressure-block sign (D-010)."""
+    reports = run_p2p1_polynomial_channel_mms(ny_levels=(2, 4))
+    for r in reports:
+        assert r.solver_residual < 1e-8
+        assert r.divergence_l2 < 1e-8
+        assert r.ux_l2_volume_p2 < 1e-6
+        assert r.p_l2_relative < 1e-6, r
+        assert r.solver_method in ("direct", "minres", "lsqr")

@@ -21,7 +21,13 @@ f = -\nu\Delta u + \nabla p,\quad f_x = -\nu\Delta u_x + \texttt{grad\_p}.
 | Exact velocity \(\notin\) P2 per tet globally; P1 pressure on Q1 | Volume \(\|u\|_{L^2}\) plateaus; pressure \(L^2\) relative \(\mathcal{O}(1)\) | **Open** (D-010) — not a substitute for channel verification |
 | Indefinite saddle; UMFPACK singular | LSQR used; residual small but not certifying optimal order | **Mitigated** (D-001) |
 
-## Measured results (uniform \(h\), \(\nu=10^{-3}\), `grad_p=-1`, after fixes)
+## v0.7.2 correction
+
+The O(1) pressure error was not an inherent P1 limitation. The discrete system used `+Bᵀ` instead of `−Bᵀ`, pinned every edge that touched the wall (destroying interior-adjacent velocity DOFs), integrated with weights that summed to 1/6, and split each hex into five tets that left interior faces with a single neighbor. Nonzero Dirichlet data also omitted the divergence-row lift.
+
+After those corrections, the polynomial channel `u_x = y(H−y)`, `p = grad_p · x` (exact in P2–P1, exact trace on ∂Ω) has interior pressure and volume velocity errors about `1e-8` to `1e-9`. Pressure DOFs on a fully Dirichlet wall that lose all free velocity support stay at 0 under LSQR; they are excluded from that norm.
+
+The sin-π field is not in the P2 space. Its volume error remains about `4.6e-3` and is not an order study.
 
 ```
 | nx | h    | ‖ux‖_L2 vert | ‖u‖_L2 vol P2 | ‖div‖   | residual |

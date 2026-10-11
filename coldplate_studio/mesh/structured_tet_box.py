@@ -42,14 +42,15 @@ def build_structured_fluid_box(
                 n101 = _node_index(i + 1, j, k + 1, nx, ny)
                 n011 = _node_index(i, j + 1, k + 1, nx, ny)
                 n111 = _node_index(i + 1, j + 1, k + 1, nx, ny)
-                # Kuhn triangulation of hex
+                # Six tets around the space diagonal n000–n111 (face-conforming across hexes).
                 tets.extend(
                     [
-                        [n000, n100, n010, n001],
-                        [n100, n110, n010, n111],
-                        [n100, n010, n001, n111],
-                        [n010, n001, n011, n111],
-                        [n100, n001, n101, n111],
+                        [n000, n100, n110, n111],
+                        [n000, n110, n010, n111],
+                        [n000, n010, n011, n111],
+                        [n000, n011, n001, n111],
+                        [n000, n001, n101, n111],
+                        [n000, n101, n100, n111],
                     ]
                 )
     fluid_arr = np.asarray(tets, dtype=int)

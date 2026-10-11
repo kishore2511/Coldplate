@@ -11,6 +11,8 @@ def test_developed_parabolic_profile_structured_duct():
         model = build_structured_fluid_box(nx=nx, ny=6, nz=2)
         results.append(solve_developed_periodic_channel(model.mesh, width=0.2, height=0.1))
     assert results[0].ux_l2_error < 1e-6
-    assert results[-1].ux_l2_error <= results[0].ux_l2_error
+    assert results[-1].ux_l2_error < 1e-6
+    # Both levels sit at ~1e-9 after the conforming hex split; do not require
+    # monotone ordering inside that roundoff band.
     assert results[0].divergence_l2 < 1e-2
     assert results[0].flow_rate_relative_error < 0.06

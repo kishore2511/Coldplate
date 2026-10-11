@@ -1,18 +1,15 @@
 # ColdPlate Studio — master engineering roadmap
 
 **Branch:** `cursor/coldplate-studio-foundation-341b`  
-**HEAD:** post v0.7.1 closure session (P2 MMS audit + completion contract)  
-**Regression:** run `pytest` — expect 63+ passed, 1 skipped (CUDA)
+**HEAD:** v0.7.2 — P2–P1 saddle corrections; CHT refinement evidence. Production flow and CHT remain **IN PROGRESS**.
 
-See `COMPLETION_CONTRACT.md` for **COMPLETE** vs **IN PROGRESS** rules.
+## Production focus
 
-## Production focus (this program)
-
-| Capability | Status | Evidence / gap |
-|------------|--------|----------------|
-| Integral fin-channel **P2–P1** steady flow | **IN PROGRESS** | Gates pass 0.12/0.08/0.06 (`test_flow_refinement_gates`); box MMS velocity ~0.3–0.5% after D-009; pressure MMS open (D-010); saddle LSQR (D-001) |
-| **CHT** with P2 advection + Galerkin flux | **IN PROGRESS** | `thermal_p2_advection.py`, `cht_fin_channel_case.py`, E2E JSON; local gradient flux noisy (D-004); energy gates documented |
-| Fin-channel **E2E** (flow → CHT → reports) | **IN PROGRESS** | `fin_channel_e2e.py`; multi-mesh flow gates; CHT metrics in JSON; not COMPLETE until CHT + flow acceptance fully met |
+| Capability | Status | Why not COMPLETE |
+|------------|--------|------------------|
+| P2–P1 fin-channel flow | **IN PROGRESS** | Mass/div/residual gates pass 0.12/0.08/0.06. Polynomial MMS (u in P2) velocity and **interior** pressure errors ~1e-8. Saddle still singular for UMFPACK (D-001). |
+| CHT with P2 advection | **IN PROGRESS** | P2 velocity is wired into advection. Local and Galerkin interface fluxes do not match (D-004). Port enthalpy magnitude is unphysical (D-011). |
+| Fin-channel E2E | **IN PROGRESS** | JSON/Markdown reports and nonzero exit on failed flow gates. Depends on the two rows above. |
 | P1 PSPG / penalty (legacy regression) | **IN PROGRESS** | Verified regressions; not production default |
 | 3D FR production / GPU / boiling / GUI | **PLANNED** | Prototype hex operators exist; **not** in production workflow |
 
@@ -29,10 +26,9 @@ See `COMPLETION_CONTRACT.md` for **COMPLETE** vs **IN PROGRESS** rules.
 
 ## Next corrective actions (ordered)
 
-1. **P2–P1:** Pressure recovery / MMS metric for P1 \(p\) (D-010); optional MINRES/UMFPACK pivoting study for coarse meshes (D-001).
-2. **CHT:** Mesh/time refinement table for coupled fin; tighten local flux diagnostics vs Galerkin (D-004).
-3. **E2E:** Parametric gates across fin mesh sizes (flow + CHT) without hard-coding 0.08 only.
-4. Do **not** expand FR/GPU scope until rows above reach COMPLETE per contract.
+1. **D-011:** Trace port enthalpy assembly; the 1e9 W scale must be explained or corrected before any energy gate can define COMPLETE.
+2. **D-004:** Interface flux formulation (gradient vs Galerkin) on the fin mesh; do not treat a skipped side-ratio gate as conservation.
+3. **D-001:** Remove or constrain the boundary-pressure null space so a direct saddle factorization is nonsingular on the channel problem.
 
 ## Session resume
 

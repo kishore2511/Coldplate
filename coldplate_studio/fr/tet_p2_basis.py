@@ -11,7 +11,7 @@ TET_P2_EDGE_PAIRS = ((0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3))
 
 
 def tet_quadrature_4pt() -> tuple[np.ndarray, np.ndarray]:
-    """Four-point rule on reference tet (barycentric coordinates, equal weights summing to 1)."""
+    """Four-point barycentric rule; weights sum to 1 (physical volume fraction)."""
     a = 0.58541020
     b = 0.13819660
     pts = np.array(
@@ -23,7 +23,8 @@ def tet_quadrature_4pt() -> tuple[np.ndarray, np.ndarray]:
         ],
         dtype=float,
     )
-    w = np.full(4, 1.0 / 24.0)
+    # Weights sum to 1 so ∫_tet f dV ≈ vol * Σ w_q f(q). (1/24 is the reference-tet rule of volume 1/6.)
+    w = np.full(4, 0.25)
     return pts, w
 
 

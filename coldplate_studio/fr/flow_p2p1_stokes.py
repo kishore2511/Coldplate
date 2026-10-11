@@ -52,8 +52,9 @@ def _pin_p2_velocity_dofs(
     no_slip_nodes: set[int] | None = None,
 ) -> set[int]:
     """
-    Dirichlet u=0 on pinned vertices and on edge-midpoint DOFs that lie on no-slip
-    segments (any edge with at least one no-slip endpoint; FSI/solid uses pinned_nodes).
+    Homogeneous (or lifted) Dirichlet on boundary vertices and on edge-midpoint DOFs
+    whose edge lies on the wall: both endpoints are no-slip. An edge from the wall
+    into the interior is a free velocity DOF (its trace on the wall is zero).
     """
     slip = no_slip_nodes if no_slip_nodes is not None else pinned_nodes
     pinned: set[int] = set()
@@ -63,9 +64,8 @@ def _pin_p2_velocity_dofs(
             for comp in range(3):
                 pinned.add(3 * vd + comp)
     for (i, j), ed in dof_map.edge_dof.items():
-        on_wall = (i in slip and j in slip) or (i in slip or j in slip)
-        on_solid = i in pinned_nodes and j in pinned_nodes
-        if on_wall or on_solid:
+        on_wall = i in slip and j in slip
+        if on_wall:
             for comp in range(3):
                 pinned.add(3 * ed + comp)
     return pinned
@@ -131,6 +131,7 @@ def solve_p2p1_stokes(
     nu: float = 1e-3,
     force_xyz: tuple[float, float, float] | None = (0.0, 0.0, 0.0),
     mms_force_at_point: callable | None = None,
+    dirichlet_velocity_at_point: callable | None = None,
     pinned_velocity_nodes: set[int],
     no_slip_nodes: set[int] | None = None,
     pressure_pin_node: int,
@@ -151,18 +152,33 @@ def solve_p2p1_stokes(
     n_p = p_nodes.size
     dim_u = 3 * n_u
     z_p = sparse.csr_matrix((n_p, n_p))
+    # Weak form: ν(∇u,∇v) − (p, div v) = (f,v), (q, div u) = 0.
+    # With B_qi = (q_i, div φ), the pressure block is −Bᵀ.
     a = sparse.bmat(
-        [[k_uu, b_mat.T], [b_mat, z_p]],
+        [[k_uu, -b_mat.T], [b_mat, z_p]],
         format="lil",
     )
     rhs = np.zeros(dim_u + n_p)
     rhs[:dim_u] = rhs_u
     pinned = _pin_p2_velocity_dofs(dof_map, pinned_velocity_nodes, no_slip_nodes)
+    dof_xyz = np.zeros((n_u, 3))
+    for i in range(n):
+        vd = int(dof_map.vertex_dof[i])
+        if vd >= 0:
+            dof_xyz[vd] = mesh.nodes[i]
+    for (ia, ib), ed in dof_map.edge_dof.items():
+        dof_xyz[int(ed)] = 0.5 * (mesh.nodes[int(ia)] + mesh.nodes[int(ib)])
     for dof in sorted(pinned):
+        comp = dof % 3
+        vd = dof // 3
+        g = 0.0 if dirichlet_velocity_at_point is None else float(dirichlet_velocity_at_point(dof_xyz[vd])[comp])
+        if abs(g) > 0.0:
+            # Lift into momentum and divergence rows before clearing the column.
+            rhs -= np.asarray(a[:, dof].toarray()).ravel() * g
         a[dof, :] = 0
         a[:, dof] = 0
         a[dof, dof] = 1.0
-        rhs[dof] = 0.0
+        rhs[dof] = g
     pin_local = int(np.where(p_nodes == int(pressure_pin_node))[0][0])
     prow = dim_u + pin_local
     a[prow, :] = 0
