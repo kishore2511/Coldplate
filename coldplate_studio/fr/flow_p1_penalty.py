@@ -34,6 +34,8 @@ class FlowSolveResult:
     pressure: np.ndarray | None = None
     pressure_drop: float | None = None
     solver_residual_norm: float | None = None
+    p2_velocity_field: object | None = None
+    solver_method: str | None = None
 
 
 def _assemble_vector_laplacian(mesh: IntegralMesh, nu: float, fluid_mask: np.ndarray) -> sparse.csr_matrix:

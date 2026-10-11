@@ -16,6 +16,7 @@ from coldplate_studio.fr.thermal_p1 import (
     interface_heat_flux,
     region_masks,
 )
+from coldplate_studio.fr.thermal_p2_advection import assemble_p2_velocity_advection
 from coldplate_studio.mesh.integral_model import IntegralMesh
 
 
@@ -64,9 +65,12 @@ class ConjugateHeatTransferSolver:
         velocity: np.ndarray,
         props: ThermalMaterialProperties,
         bcs: ThermalBoundaryConditions,
+        *,
+        p2_velocity_field=None,
     ) -> None:
         self.mesh = mesh
         self.velocity = velocity
+        self.p2_velocity_field = p2_velocity_field
         self.props = props
         self.bcs = bcs
         self.fluid_mask, self.solid_mask = region_masks(mesh)
@@ -77,7 +81,10 @@ class ConjugateHeatTransferSolver:
         k_f = assemble_region_stiffness(mesh, mesh.fluid_tets, props.k_fluid)
         k_s = assemble_region_stiffness(mesh, mesh.solid_tets, props.k_solid)
         self._k = k_f + k_s
-        self._c = assemble_advection(mesh, velocity, props.rho_cp_fluid)
+        if p2_velocity_field is not None:
+            self._c = assemble_p2_velocity_advection(mesh, p2_velocity_field, props.rho_cp_fluid)
+        else:
+            self._c = assemble_advection(mesh, velocity, props.rho_cp_fluid)
         self.state = CHTState(temperature=np.full(n, bcs.solid_outer_temperature_k))
 
     def _dirichlet_pairs(self) -> list[tuple[int, float]]:

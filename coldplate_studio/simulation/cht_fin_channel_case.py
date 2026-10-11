@@ -71,7 +71,13 @@ def run_fin_channel_cht_case(
         solid_outer_temperature_k=solid_base_temperature_k,
         solid_volumetric_heat_w_m3=solid_volumetric_heat_w_m3,
     )
-    cht = ConjugateHeatTransferSolver(mesh, flow_run.flow.velocity, props, bcs)
+    cht = ConjugateHeatTransferSolver(
+        mesh,
+        flow_run.flow.velocity,
+        props,
+        bcs,
+        p2_velocity_field=getattr(flow_run.flow, "p2_velocity_field", None),
+    )
     t_prev = cht.state.temperature.copy()
     vol_lump = np.zeros(mesh.nodes.shape[0])
     from coldplate_studio.fr.thermal_p1 import assemble_region_lumped_mass

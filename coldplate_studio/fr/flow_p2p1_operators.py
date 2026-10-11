@@ -119,7 +119,11 @@ def assemble_p2_mms_body_force_rhs(
         loc_u = dof_map.local_dof_indices(tet)
         for q, wq in zip(q_pts, q_w):
             dvol = vol * wq
-            f = force_at_barycentric(nodes, q)
+            # Physical point from barycentric coordinates on linear tet
+            x = np.zeros(3)
+            for k in range(4):
+                x += q[k] * nodes[k]
+            f = force_at_barycentric(x)
             phi = p2_shape_values(q)
             for a in range(10):
                 ia = int(loc_u[a])

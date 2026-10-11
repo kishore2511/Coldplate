@@ -5,7 +5,7 @@
 | Component | Discretization | Notes |
 |-----------|----------------|-------|
 | Steady Stokes (verification) | P1–P1 mixed + PSPG (τ = h²/(4ν)) | `flow_p1_pspg_mixed.py`; pressure pin |
-| Steady Stokes (fin channel, **production v0.5**) | **Taylor–Hood P2–P1** mixed | `flow_p2p1_stokes.py`; quadratic velocity on fluid edges+vertices; LSQR saddle solve |
+| Steady Stokes (fin channel, **production v0.6**) | **Taylor–Hood P2–P1** mixed | `flow_p2p1_stokes.py`; pressure pin; `flow_p2_saddle_solve` direct/LSQR; MMS in `flow_p2_mms.py` |
 | Steady Stokes (fin channel, legacy) | PSPG + body force + grad-div β(h)=β_ref(h_ref/h)² | `formulation="pspg"`; see v0.4.1 notes |
 | Steady Stokes (fin channel, legacy) | P1 + grad-div penalty | `formulation="penalty"`; regression |
 | Transient | Chorin–Temam projection on P1 | Lumped div → Poisson; γP stabilization |

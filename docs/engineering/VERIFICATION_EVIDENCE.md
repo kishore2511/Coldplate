@@ -31,6 +31,8 @@
 | `integral_fin_channel_p2p1_taylor_hood_flow` | numerically_verified | `test_p2p1_fin_channel_mass_balance_reference_mesh` | solver residual, mass imb | Taylor–Hood production |
 | `integral_fin_channel_p2p1_taylor_hood_flow` | numerically_verified | `test_fin_channel_flow_refinement_gates_documented` | three-level gates pass | P2–P1; FIN_CHANNEL_V05.md |
 | `conjugate_heat_transfer_p1` | numerically_verified | `test_galerkin_interface_flux_balanced_on_analytical_bar` | Galerkin imb < 5% | weak-form interface exchange |
+| `integral_fin_channel_p2p1_taylor_hood_flow` | numerically_verified | `test_p2p1_manufactured_stokes_mms_residual_and_refinement` | ux L2 decreases nx=4→8 | full MMS forcing |
+| `p1_scalar_thermal_transport` | numerically_verified | `test_p2_advection_matches_p1_for_vertex_constant_velocity` | P2 u_h in advection | v0.6 |
 | `integral_fin_channel_pspg_flow` | numerically_verified | `test_flow_port_faces_have_streamwise_outward_normals` | \|n_x\|>0.5 on ports | normal-aligned selection |
 | `fin_channel_single_phase_e2e` | numerically_verified | `test_fin_channel_e2e_flow_gates_pass_reference_mesh` | flow+CHT gates | mesh_size=0.08; volumetric solid heat demo |
 | `conjugate_heat_transfer_p1` | numerically_verified | `test_fin_channel_cht_nonzero_interface_flux_with_volumetric_source` | \|Q_s\|>1e-4 W | port inlet BC; energy residual < 0.35 |

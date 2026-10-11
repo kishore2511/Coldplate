@@ -6,7 +6,8 @@ from dataclasses import dataclass
 
 import numpy as np
 from scipy import sparse
-from scipy.sparse.linalg import lsqr
+from coldplate_studio.fr.flow_p2_saddle_solve import solve_stokes_saddle
+from coldplate_studio.fr.flow_p2_velocity_field import P2VelocityField
 
 from coldplate_studio.fr.flow_boundary_flux import (
     discrete_divergence_l2,
@@ -16,7 +17,11 @@ from coldplate_studio.fr.flow_boundary_flux import (
 )
 from coldplate_studio.fr.flow_p1_operators import fluid_node_mask
 from coldplate_studio.fr.flow_p2_dof_map import P2VelocityDofMap, build_p2_velocity_dof_map, pressure_dofs_on_fluid_vertices
-from coldplate_studio.fr.flow_p2p1_operators import assemble_p2_body_force_rhs, assemble_p2p1_stokes
+from coldplate_studio.fr.flow_p2p1_operators import (
+    assemble_p2_body_force_rhs,
+    assemble_p2_mms_body_force_rhs,
+    assemble_p2p1_stokes,
+)
 from coldplate_studio.fr.tet_p2_basis import TET_P2_EDGE_PAIRS, p2_shape_values, tet_quadrature_4pt
 from coldplate_studio.fr.tet_p1 import _tet_gradients
 from coldplate_studio.mesh.integral_model import IntegralMesh
@@ -29,6 +34,8 @@ class P2P1StokesResult:
     divergence_l2: float
     pressure_residual_norm: float
     solver_residual_norm: float
+    solver_method: str = "lsqr"
+    p2_velocity_field: P2VelocityField | None = None
     inlet_flux_m3_s: float | None = None
     outlet_flux_m3_s: float | None = None
     mass_flux_relative_imbalance: float | None = None
@@ -122,7 +129,8 @@ def solve_p2p1_stokes(
     mesh: IntegralMesh,
     *,
     nu: float = 1e-3,
-    force_xyz: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    force_xyz: tuple[float, float, float] | None = (0.0, 0.0, 0.0),
+    mms_force_at_point: callable | None = None,
     pinned_velocity_nodes: set[int],
     no_slip_nodes: set[int] | None = None,
     pressure_pin_node: int,
@@ -134,7 +142,11 @@ def solve_p2p1_stokes(
     dof_map = build_p2_velocity_dof_map(mesh, fluid_mask)
     p_nodes = pressure_dofs_on_fluid_vertices(fluid_mask)
     k_uu, b_mat, _ = assemble_p2p1_stokes(mesh, nu, dof_map, p_nodes)
-    rhs_u = assemble_p2_body_force_rhs(mesh, dof_map, force_xyz)
+    if mms_force_at_point is not None:
+        rhs_u = assemble_p2_mms_body_force_rhs(mesh, dof_map, mms_force_at_point)
+    else:
+        fx, fy, fz = force_xyz or (0.0, 0.0, 0.0)
+        rhs_u = assemble_p2_body_force_rhs(mesh, dof_map, (fx, fy, fz))
     n_u = dof_map.n_velocity_dofs
     n_p = p_nodes.size
     dim_u = 3 * n_u
@@ -157,8 +169,9 @@ def solve_p2p1_stokes(
     a[:, prow] = 0
     a[prow, prow] = 1.0
     rhs[prow] = 0.0
-    sol, *_ = lsqr(a.tocsr(), rhs, atol=1e-11, btol=1e-11)
+    sol, method, _ = solve_stokes_saddle(a.tocsr(), rhs, pressure_pin_row=prow)
     u_flat = sol[:dim_u]
+    p2_field = P2VelocityField(dof_map=dof_map, coefficients=u_flat.copy())
     p_coeff = sol[dim_u:]
     velocity = _expand_vertex_velocity(dof_map, u_flat, n)
     pressure = np.zeros(n)
@@ -192,6 +205,8 @@ def solve_p2p1_stokes(
         divergence_l2=div_l2,
         pressure_residual_norm=pres_res,
         solver_residual_norm=res,
+        solver_method=method,
+        p2_velocity_field=p2_field,
         inlet_flux_m3_s=phi_in,
         outlet_flux_m3_s=phi_out,
         mass_flux_relative_imbalance=imb,

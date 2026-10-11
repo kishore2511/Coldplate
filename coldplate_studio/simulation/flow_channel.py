@@ -58,6 +58,8 @@ def run_channel_flow(
             pressure=p2.pressure,
             pressure_drop=p2.pressure_drop,
             solver_residual_norm=p2.solver_residual_norm,
+            p2_velocity_field=p2.p2_velocity_field,
+            solver_method=p2.solver_method,
         )
         return ChannelFlowRunResult(
             flow=flow,
