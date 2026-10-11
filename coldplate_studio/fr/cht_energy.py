@@ -57,6 +57,7 @@ def transient_energy_balance(
     inlet_temperature: float,
     outlet_nodes: np.ndarray,
     velocity: np.ndarray,
+    solid_volumetric_heat_w: float = 0.0,
 ) -> EnergyBalanceReport:
     e_prev = nodal_stored_energy(mesh, t_prev, rho_cp_fluid, rho_cp_solid)
     e_new = nodal_stored_energy(mesh, t_new, rho_cp_fluid, rho_cp_solid)
@@ -67,8 +68,8 @@ def transient_energy_balance(
     phi_out = float(np.sum(rho_cp * velocity[outlet_nodes, 0] * t_new[outlet_nodes])) if outlet_nodes.size else 0.0
     delta = e_new - e_prev
     # BE: ΔE/dt ≈ -Q_interface + net enthalpy flux (sign convention documented)
-    residual = delta / dt - (qf + qs) - (phi_in - phi_out)
-    scale = max(abs(delta / dt), abs(qf), abs(phi_in), 1e-12)
+    residual = delta / dt - (qf + qs) - (phi_in - phi_out) - solid_volumetric_heat_w
+    scale = max(abs(delta / dt), abs(qf), abs(phi_in), abs(solid_volumetric_heat_w), 1e-12)
     return EnergyBalanceReport(
         stored_energy_j=e_new,
         stored_energy_prev_j=e_prev,

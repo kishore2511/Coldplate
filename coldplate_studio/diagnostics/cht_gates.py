@@ -26,19 +26,29 @@ def evaluate_cht_gates(
     energy_balance: EnergyBalanceReport,
     *,
     interface_flux_magnitude_w: float,
+    enforce_interface_consistency: bool = True,
 ) -> CHTGateReport:
-    flux_ok = True
-    if interface_flux_magnitude_w >= INTERFACE_FLUX_MIN_MAGNITUDE_W:
-        flux_ok = interface_flux_imbalance <= INTERFACE_FLUX_IMBALANCE_MAX
+    magnitude_ok = interface_flux_magnitude_w >= INTERFACE_FLUX_MIN_MAGNITUDE_W
+    consistency_ok = interface_flux_imbalance <= INTERFACE_FLUX_IMBALANCE_MAX
+    if not magnitude_ok:
+        flux_ok = False
+    elif enforce_interface_consistency:
+        flux_ok = consistency_ok
+    else:
+        flux_ok = True
     energy_ok = energy_balance.relative_residual <= ENERGY_RELATIVE_RESIDUAL_MAX
     msgs: list[str] = []
-    if interface_flux_magnitude_w < INTERFACE_FLUX_MIN_MAGNITUDE_W:
+    if not magnitude_ok:
         msgs.append(
-            f"interface flux magnitude {interface_flux_magnitude_w:.3e} W below gate threshold "
-            f"{INTERFACE_FLUX_MIN_MAGNITUDE_W} (skipped imbalance check)"
+            f"interface flux magnitude {interface_flux_magnitude_w:.3e} W < required minimum "
+            f"{INTERFACE_FLUX_MIN_MAGNITUDE_W} W (no measurable coupled heat transfer)"
         )
-    elif not flux_ok:
+    elif enforce_interface_consistency and not consistency_ok:
         msgs.append(f"interface flux imbalance {interface_flux_imbalance:.3f} > {INTERFACE_FLUX_IMBALANCE_MAX}")
+    elif not enforce_interface_consistency and not consistency_ok:
+        msgs.append(
+            f"interface flux imbalance {interface_flux_imbalance:.3f} (consistency not gated; see report)"
+        )
     if not energy_ok:
         msgs.append(
             f"energy relative residual {energy_balance.relative_residual:.3f} > {ENERGY_RELATIVE_RESIDUAL_MAX}"

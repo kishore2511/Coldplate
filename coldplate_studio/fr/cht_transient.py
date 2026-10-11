@@ -33,6 +33,7 @@ class ThermalBoundaryConditions:
     fluid_inlet_temperature_k: float = 350.0
     solid_outer_nodes: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=int))
     solid_outer_temperature_k: float = 300.0
+    solid_volumetric_heat_w_m3: float = 0.0
 
 
 @dataclass
@@ -91,6 +92,9 @@ class ConjugateHeatTransferSolver:
         m = sparse.diags(self._lumped, format="csr")
         a = (m / dt + self._k + self._c).tolil()
         b = m @ self.state.temperature / dt
+        if self.bcs.solid_volumetric_heat_w_m3 != 0.0:
+            vol_lump = assemble_region_lumped_mass(self.mesh, self.mesh.solid_tets, 1.0)
+            b = b + self.bcs.solid_volumetric_heat_w_m3 * vol_lump
         a, b = apply_dirichlet_elimination(a.tocsr(), b, self._dirichlet_pairs())
         t_new = spsolve(a, b)
         self.state.temperature = t_new

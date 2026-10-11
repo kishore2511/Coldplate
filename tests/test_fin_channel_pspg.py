@@ -38,8 +38,8 @@ def test_fin_channel_pspg_refinement_table_recorded():
                 r.solver_residual_norm,
             )
         )
-    # Reference case used in FLOW_MASS_IMBALANCE_REPORT (~19.7%)
+    # v0.3.1: normal-aligned port faces + PSPG β=100 → ~5% at mesh_size=0.08
     ref = next(x for x in rows if x[0] == 0.08)
-    assert 0.15 < ref[4] < 0.25
+    assert ref[4] < 0.12
     assert ref[2] > 400
     assert ref[3] < 0.005

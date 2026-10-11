@@ -9,6 +9,10 @@ from coldplate_studio.fr.thermal_p1 import assemble_region_stiffness, interface_
 from coldplate_studio.mesh.integral_pipeline import build_integral_channel_model
 from coldplate_studio.mesh.structured_tet_box import build_structured_fluid_box
 from coldplate_studio.simulation.flow_channel import run_channel_flow
+from coldplate_studio.simulation.flow_channel_boundaries import (
+    build_integral_channel_flow_boundaries,
+    channel_port_fluid_nodes,
+)
 
 
 def _apply_dirichlet_rows(a: sparse.spmatrix, b: np.ndarray, node_values: list[tuple[int, float]]):
@@ -72,8 +76,8 @@ def test_integral_channel_interface_flux_continuity_linear_z():
 def test_cht_transient_energy_balance_relative_residual():
     model = build_integral_channel_model(mesh_size=0.08)
     run = run_channel_flow(model, formulation="pspg")
-    inlet = np.array([i for i in model.mesh.boundary_fluid_nodes if model.mesh.nodes[i, 0] < 0.02], dtype=int)[:8]
-    outlet = np.array([i for i in model.mesh.boundary_fluid_nodes if model.mesh.nodes[i, 0] > 0.98], dtype=int)[:8]
+    boundaries = build_integral_channel_flow_boundaries(model)
+    inlet, outlet = channel_port_fluid_nodes(boundaries)
     solver = ConjugateHeatTransferSolver(
         model.mesh,
         run.flow.velocity,

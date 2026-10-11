@@ -25,8 +25,14 @@ Outward-normal convention: area vector from fluid tet face, flipped so it points
 
 5. **Wall leakage flux is negligible.** Diagnostics show |Φ_wall|, |Φ_FSI| ≪ |Φ_ports| on no-slip walls, confirming outward normals and sign convention (Φ_in > 0, Φ_out < 0 for streamwise flow).
 
-## Conclusion
+## v0.3.1 update (port tags)
 
-The ~19.7% port metric is **consistent with penalty-Stokes discretization error and non-zero div **u****, not a bug in oriented flux integration. Improving it requires either higher penalty with stable linear solve, a projection-based incompressible formulation, and/or mesh refinement—not changing normalization or omitting faces.
+Re-audit at `950dc91` showed the **dominant error** on reported 191% / 19.7% / 164% metrics was **including non-streamwise exterior fluid faces** in inlet/outlet flux integrals (x-tolerance only). With **normal-aligned port selection**, PSPG+β=100 at mesh_size=0.08 matches penalty at **~5%** imbalance; coarser `0.12` and finer `0.06` remain **>100%** with the same β.
+
+Residual imbalance at the reference mesh is still **discretization** (grad-div + non-zero ‖div u‖), not oriented-flux sign errors. See `FIN_CHANNEL_V031.md`.
+
+## Conclusion (penalty baseline, tol-only ports)
+
+The ~19.7% port metric on **tol-only** face sets is **consistent with penalty-Stokes discretization error, non-zero div **u**, and port-face grouping** — not a bug in oriented flux integration alone.
 
 See `analyze_mass_continuity()` in `fr/flow_diagnostics.py` and `test_flow_diagnostics.py`.

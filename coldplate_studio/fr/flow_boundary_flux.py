@@ -53,6 +53,27 @@ def discrete_divergence_l2(mesh: IntegralMesh, velocity: np.ndarray) -> float:
     return float(np.sqrt(div_sq / max(vol_sum, 1e-30)))
 
 
+def add_pressure_traction_rhs(
+    rhs: np.ndarray,
+    n_nodes: int,
+    face_keys: list[tuple[int, int, int]],
+    pressure_pa: float,
+    area_vecs: dict[tuple[int, int, int], np.ndarray],
+) -> None:
+    """
+    Weak natural BC: add ∫_Γ p (n·v) dA to the momentum RHS (Stokes sign convention).
+
+    ``area_vecs`` stores 2×area×n_outward per face key (consistent with ``oriented_face_flux``).
+    """
+    dim_u = 3 * n_nodes
+    for key in face_keys:
+        n_vec = area_vecs[key]
+        area = 0.5 * float(np.linalg.norm(n_vec))
+        for node in key:
+            for comp in range(3):
+                rhs[comp * n_nodes + int(node)] += pressure_pa * (area / 3.0) * (n_vec[comp] / max(2.0 * area, 1e-30))
+
+
 def normalized_mass_imbalance(inlet_flux_m3_s: float, outlet_flux_m3_s: float) -> float:
     """|Φ_in + Φ_out| / mean(|Φ_in|, |Φ_out|) — opposite signs expected for through-flow."""
     mean_flux = 0.5 * (abs(inlet_flux_m3_s) + abs(outlet_flux_m3_s))

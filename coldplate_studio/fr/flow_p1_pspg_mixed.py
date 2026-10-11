@@ -26,6 +26,7 @@ from coldplate_studio.fr.flow_p1_operators import (
     wall_pinned_dofs,
 )
 from coldplate_studio.fr.flow_boundary_flux import (
+    add_pressure_traction_rhs,
     discrete_divergence_l2,
     fluid_boundary_outward_area_vectors,
     normalized_mass_imbalance,
@@ -90,6 +91,9 @@ def solve_stokes_pspg(
     periodic_gamma: float = 1e4,
     inlet_faces: list[tuple[int, int, int]] | None = None,
     outlet_faces: list[tuple[int, int, int]] | None = None,
+    inlet_pressure: float | None = None,
+    outlet_pressure: float | None = None,
+    inlet_velocity_dirichlet: dict[int, tuple[float, float, float]] | None = None,
 ) -> PSPGStokesResult:
     n = mesh.nodes.shape[0]
     dim_u = 3 * n
@@ -109,14 +113,34 @@ def solve_stokes_pspg(
     )
     rhs = np.zeros(dim_u + n)
     rhs[:dim_u] = _body_force_rhs(mesh, n, force_x)
+    area_vecs = fluid_boundary_outward_area_vectors(mesh)
+    if inlet_faces is not None and inlet_pressure is not None:
+        in_keys = [tuple(sorted(f)) for f in inlet_faces]
+        add_pressure_traction_rhs(rhs[:dim_u], n, in_keys, inlet_pressure, area_vecs)
+    if outlet_faces is not None and outlet_pressure is not None:
+        out_keys = [tuple(sorted(f)) for f in outlet_faces]
+        add_pressure_traction_rhs(rhs[:dim_u], n, out_keys, outlet_pressure, area_vecs)
     if periodic_pairs:
         _add_periodic_velocity_penalty(a, periodic_pairs, n, periodic_gamma)
     pinned = wall_pinned_dofs(n, pinned_velocity_nodes)
+    inlet_nodes_set = set(inlet_velocity_dirichlet or {})
     for dof in sorted(pinned):
+        node = dof % n
+        comp = dof // n
+        if node in inlet_nodes_set and comp < 3:
+            continue
         a[dof, :] = 0
         a[:, dof] = 0
         a[dof, dof] = 1.0
         rhs[dof] = 0.0
+    if inlet_velocity_dirichlet:
+        for node, (ux, uy, uz) in inlet_velocity_dirichlet.items():
+            for comp, val in enumerate((ux, uy, uz)):
+                dof = comp * n + int(node)
+                a[dof, :] = 0
+                a[:, dof] = 0
+                a[dof, dof] = 1.0
+                rhs[dof] = val
     pin_p = {int(pressure_pin_node)}
     if pressure_pin_nodes_extra:
         pin_p |= {int(i) for i in pressure_pin_nodes_extra}
@@ -139,11 +163,10 @@ def solve_stokes_pspg(
     imb = None
     dp = None
     if inlet_faces is not None and outlet_faces is not None:
-        area = fluid_boundary_outward_area_vectors(mesh)
         in_keys = [tuple(sorted(f)) for f in inlet_faces]
         out_keys = [tuple(sorted(f)) for f in outlet_faces]
-        phi_in = oriented_face_flux(mesh, velocity, in_keys, area)
-        phi_out = oriented_face_flux(mesh, velocity, out_keys, area)
+        phi_in = oriented_face_flux(mesh, velocity, in_keys, area_vecs)
+        phi_out = oriented_face_flux(mesh, velocity, out_keys, area_vecs)
         imb = normalized_mass_imbalance(phi_in, phi_out)
         pin = np.mean(pressure[[i for f in inlet_faces for i in f]])
         pout = np.mean(pressure[[i for f in outlet_faces for i in f]])
@@ -169,25 +192,53 @@ def solve_integral_channel_pspg(
     boundaries,
     *,
     nu: float = 1e-3,
+    drive: str = "body_force_legacy",
+    inlet_pressure_pa: float = 1.0,
+    outlet_pressure_pa: float = 0.0,
     dp_dx: float = -1.0,
     momentum_grad_div_beta: float = 100.0,
+    inlet_u_max: float = 0.5,
+    channel_width_y: float = 0.2,
 ) -> PSPGStokesResult:
     """
-    Fin-channel PSPG with open inlet/outlet (natural traction) and body-force drive.
+    Fin-channel steady Stokes (PSPG).
 
-    On conforming fluid–solid meshes, pressure DOFs on solid-only nodes are pinned to zero.
-    ``momentum_grad_div_beta`` augments the momentum block for open-duct mass control (documented;
-    periodic/MMS benchmarks use beta=0).
+    **body_force_legacy (default):** uniform f_x=dp_dx, open inlet/outlet (natural traction),
+    no-slip walls, PSPG continuity (τ=h²/(4ν)), momentum grad-div β (default 100, same scale as penalty).
+
+    **inlet_parabolic:** parabolic u_x on inlet face nodes, β=0, no body force (experimental on fin mesh).
+
+    **pressure_traction:** weak ∫ p n·v dΓ with prescribed inlet/outlet pressure; β=0.
     """
+    from coldplate_studio.simulation.flow_inlet_profile import parabolic_inlet_ux
+
     solid_pins = set(int(i) for i in boundaries.solid_only_nodes)
+    pin_extra: set[int] = solid_pins
+    inlet_vel: dict[int, tuple[float, float, float]] | None = None
+    force_x = 0.0
+    beta = 0.0
+    p_in = p_out = None
+    if drive == "body_force_legacy":
+        force_x = dp_dx
+        beta = momentum_grad_div_beta
+    elif drive == "inlet_parabolic":
+        inlet_nodes = np.array(sorted({i for f in boundaries.inlet_faces for i in f}), dtype=int)
+        inlet_vel = parabolic_inlet_ux(mesh, inlet_nodes, width_y=channel_width_y, u_max=inlet_u_max)
+    elif drive == "pressure_traction":
+        force_x = 0.0
+        p_in = inlet_pressure_pa
+        p_out = outlet_pressure_pa
     return solve_stokes_pspg(
         mesh,
         nu=nu,
-        force_x=dp_dx,
+        force_x=force_x,
         pinned_velocity_nodes=boundaries.pinned_velocity_nodes,
         pressure_pin_node=boundaries.fluid_pressure_reference_node,
-        pressure_pin_nodes_extra=solid_pins,
-        momentum_grad_div_beta=momentum_grad_div_beta,
+        pressure_pin_nodes_extra=pin_extra,
+        momentum_grad_div_beta=beta,
         inlet_faces=boundaries.inlet_faces,
         outlet_faces=boundaries.outlet_faces,
+        inlet_pressure=p_in,
+        outlet_pressure=p_out,
+        inlet_velocity_dirichlet=inlet_vel,
     )

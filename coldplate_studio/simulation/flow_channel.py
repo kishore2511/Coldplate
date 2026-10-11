@@ -29,7 +29,7 @@ def run_channel_flow(
     model: IntegralModel,
     length: float = 1.0,
     *,
-    formulation: Literal["pspg", "penalty"] = "pspg",
+    formulation: Literal["pspg", "penalty", "pspg_inlet_parabolic", "pspg_legacy_body_force"] = "pspg",
     momentum_grad_div_beta: float = 100.0,
 ) -> ChannelFlowRunResult:
     boundaries = build_integral_channel_flow_boundaries(model, length)
@@ -54,11 +54,18 @@ def run_channel_flow(
             mass_flux_relative_imbalance=float(rel),
             formulation="penalty_stokes",
         )
-    pspg = solve_integral_channel_pspg(
-        model.mesh,
-        boundaries,
-        momentum_grad_div_beta=momentum_grad_div_beta,
-    )
+    if formulation == "pspg_inlet_parabolic":
+        pspg = solve_integral_channel_pspg(model.mesh, boundaries, drive="inlet_parabolic")
+        formulation_name = "pspg_inlet_parabolic"
+    else:
+        pspg = solve_integral_channel_pspg(
+            model.mesh,
+            boundaries,
+            drive="body_force_legacy",
+            dp_dx=-1.0,
+            momentum_grad_div_beta=momentum_grad_div_beta,
+        )
+        formulation_name = "pspg_mixed_stokes"
     fluid_mask = np.zeros(model.mesh.nodes.shape[0], dtype=bool)
     for tet in model.mesh.fluid_tets:
         fluid_mask[tet] = True
@@ -68,7 +75,7 @@ def run_channel_flow(
         inlet_flux_m3_s=float(pspg.inlet_flux_m3_s or 0.0),
         outlet_flux_m3_s=float(pspg.outlet_flux_m3_s or 0.0),
         mean_velocity_x=float(np.mean(pspg.velocity[fluid_mask, 0])),
-        formulation="pspg_mixed_stokes",
+        formulation=formulation_name,
         pressure=pspg.pressure,
         pressure_drop=pspg.pressure_drop,
         solver_residual_norm=pspg.solver_residual_norm,
@@ -77,5 +84,5 @@ def run_channel_flow(
         flow=flow,
         ports_ok=True,
         mass_flux_relative_imbalance=float(pspg.mass_flux_relative_imbalance or 0.0),
-        formulation="pspg_mixed_stokes",
+        formulation=formulation_name,
     )

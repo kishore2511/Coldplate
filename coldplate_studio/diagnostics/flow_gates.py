@@ -19,10 +19,11 @@ class FlowGateReport:
     messages: list[str]
 
 
-# Reference mesh_size=0.08: div~1.8e-3, imb~19.7% with PSPG+beta=100 (same as legacy penalty).
+# Fin-channel PSPG (body-force + β=100, normal-aligned ports): mesh_size=0.08 imb~5%, ‖div u‖~1e-3.
+# Coarser/finer meshes can exceed this (documented in FLOW_MASS_IMBALANCE_REPORT v0.3.1).
 SOLVER_RESIDUAL_MAX = 1e-8
 DIVERGENCE_L2_MAX = 0.005
-MASS_IMBALANCE_MAX_REFERENCE_MESH = 0.22
+MASS_IMBALANCE_MAX = 0.20
 
 
 def evaluate_flow_gates(result: "ChannelFlowRunResult") -> FlowGateReport:
@@ -30,7 +31,7 @@ def evaluate_flow_gates(result: "ChannelFlowRunResult") -> FlowGateReport:
     res = f.solver_residual_norm if f.solver_residual_norm is not None else 0.0
     solver_ok = res <= SOLVER_RESIDUAL_MAX
     div_ok = f.divergence_l2 <= DIVERGENCE_L2_MAX
-    imb_ok = result.mass_flux_relative_imbalance <= MASS_IMBALANCE_MAX_REFERENCE_MESH
+    imb_ok = result.mass_flux_relative_imbalance <= MASS_IMBALANCE_MAX
     msgs: list[str] = []
     if not solver_ok:
         msgs.append(f"solver residual {res:.3e} > {SOLVER_RESIDUAL_MAX}")
@@ -38,7 +39,7 @@ def evaluate_flow_gates(result: "ChannelFlowRunResult") -> FlowGateReport:
         msgs.append(f"‖div u‖_L2 {f.divergence_l2:.3e} > {DIVERGENCE_L2_MAX}")
     if not imb_ok:
         msgs.append(
-            f"mass imbalance {result.mass_flux_relative_imbalance:.3f} > {MASS_IMBALANCE_MAX_REFERENCE_MESH}"
+            f"mass imbalance {result.mass_flux_relative_imbalance:.3f} > {MASS_IMBALANCE_MAX}"
         )
     return FlowGateReport(
         ok=solver_ok and div_ok and imb_ok,
