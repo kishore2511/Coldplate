@@ -84,22 +84,27 @@ def interface_heat_flux(
 ) -> tuple[float, float]:
     """
     Integrated normal heat flux ∫ q·n dA on FSI triangles from fluid and solid sides.
-    Returns (Q_fluid_to_solid, Q_solid_to_fluid) — should be opposite for consistent coupling.
+
+    ``n`` points fluid → solid (``interface_geometry``). Returns
+    (Q_fluid_to_solid, Q_solid_to_fluid); for a conservative field Q_f ≈ −Q_s.
     """
     from coldplate_studio.mesh.interface_geometry import analyze_interface_geometry
 
     geom = analyze_interface_geometry(mesh)
     q_f = q_s = 0.0
-    nodes = mesh.nodes
     for tri_g, tri_m in zip(geom.triangles, mesh.interface_triangles):
-        tri = tri_m
-        grad_t = _interface_temperature_gradient(mesh, tri, temperature, "fluid", conductivity_fluid)
-        grad_ts = _interface_temperature_gradient(mesh, tri, temperature, "solid", conductivity_solid)
+        tri = np.asarray(tri_m, dtype=int)
         n_vec = tri_g.normal * tri_g.area_m2
-        # n_vec is outward from fluid; solid-side outward normal is opposite.
-        q_f += float(np.dot(-conductivity_fluid * grad_t, n_vec))
-        q_s += float(np.dot(-conductivity_solid * grad_ts, -n_vec))
+        grad_f = _interface_temperature_gradient(mesh, tri, temperature, "fluid", tri_g.normal)
+        grad_s = _interface_temperature_gradient(mesh, tri, temperature, "solid", tri_g.normal)
+        q_f += float(np.dot(-conductivity_fluid * grad_f, n_vec))
+        q_s += float(np.dot(-conductivity_solid * grad_s, -n_vec))
     return q_f, q_s
+
+
+def interface_flux_imbalance(q_fluid_w: float, q_solid_w: float) -> float:
+    denom = max(abs(q_fluid_w), abs(q_solid_w), 1e-12)
+    return float(abs(q_fluid_w + q_solid_w) / denom)
 
 
 def _interface_temperature_gradient(
@@ -107,18 +112,34 @@ def _interface_temperature_gradient(
     tri: np.ndarray,
     temperature: np.ndarray,
     side: str,
-    k: float,
+    interface_normal: np.ndarray,
 ) -> np.ndarray:
-    """P1 gradient of T on interface triangle using one adjacent tet."""
-    key = tuple(sorted(int(x) for x in tri))
+    """P1 ∇T on interface triangle using the adjacent element on the requested side."""
+    tri_set = {int(x) for x in tri}
     tets = mesh.fluid_tets if side == "fluid" else mesh.solid_tets
+    face_center = mesh.nodes[tri].mean(axis=0)
+    n_hat = interface_normal / max(float(np.linalg.norm(interface_normal)), 1e-30)
+    best_score = -np.inf
+    best_overlap = 0
+    best_grad = np.zeros(3)
     for tet in tets:
-        local = ((0, 1, 2), (0, 1, 3), (0, 2, 3), (1, 2, 3))
-        for a, b, c in local:
-            if tuple(sorted((int(tet[a]), int(tet[b]), int(tet[c])))) == key:
-                vol, grads = _tet_gradients(mesh.nodes[tet])
-                g = np.zeros(3)
-                for i in range(4):
-                    g += grads[i] * temperature[tet[i]]
-                return g
-    return np.zeros(3)
+        nodes_tet = {int(tet[i]) for i in range(4)}
+        overlap = len(tri_set & nodes_tet)
+        if overlap < 2:
+            continue
+        opp_nodes = [int(tet[i]) for i in range(4) if int(tet[i]) not in tri_set]
+        if not opp_nodes:
+            continue
+        opp_pt = mesh.nodes[opp_nodes[0]]
+        sign = -1.0 if side == "fluid" else 1.0
+        orient = float(np.dot(opp_pt - face_center, sign * n_hat))
+        if overlap < best_overlap or (overlap == best_overlap and orient <= best_score):
+            continue
+        vol, grads = _tet_gradients(mesh.nodes[tet])
+        g = np.zeros(3)
+        for i in range(4):
+            g += grads[i] * temperature[tet[i]]
+        best_overlap = overlap
+        best_score = orient
+        best_grad = g
+    return best_grad

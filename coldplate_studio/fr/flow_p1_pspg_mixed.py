@@ -196,7 +196,8 @@ def solve_integral_channel_pspg(
     inlet_pressure_pa: float = 1.0,
     outlet_pressure_pa: float = 0.0,
     dp_dx: float = -1.0,
-    momentum_grad_div_beta: float = 100.0,
+    momentum_grad_div_beta: float | None = None,
+    scale_grad_div_with_mesh: bool = True,
     inlet_u_max: float = 0.5,
     channel_width_y: float = 0.2,
 ) -> PSPGStokesResult:
@@ -210,6 +211,7 @@ def solve_integral_channel_pspg(
 
     **pressure_traction:** weak ∫ p n·v dΓ with prescribed inlet/outlet pressure; β=0.
     """
+    from coldplate_studio.fr.flow_stabilization import scaled_grad_div_beta
     from coldplate_studio.simulation.flow_inlet_profile import parabolic_inlet_ux
 
     solid_pins = set(int(i) for i in boundaries.solid_only_nodes)
@@ -220,7 +222,10 @@ def solve_integral_channel_pspg(
     p_in = p_out = None
     if drive == "body_force_legacy":
         force_x = dp_dx
-        beta = momentum_grad_div_beta
+        if momentum_grad_div_beta is None:
+            beta = scaled_grad_div_beta(mesh) if scale_grad_div_with_mesh else 100.0
+        else:
+            beta = momentum_grad_div_beta
     elif drive == "inlet_parabolic":
         inlet_nodes = np.array(sorted({i for f in boundaries.inlet_faces for i in f}), dtype=int)
         inlet_vel = parabolic_inlet_ux(mesh, inlet_nodes, width_y=channel_width_y, u_max=inlet_u_max)

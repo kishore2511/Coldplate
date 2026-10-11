@@ -63,7 +63,8 @@ def run_channel_flow(
             boundaries,
             drive="body_force_legacy",
             dp_dx=-1.0,
-            momentum_grad_div_beta=momentum_grad_div_beta,
+            momentum_grad_div_beta=momentum_grad_div_beta if formulation == "pspg_legacy_body_force" else None,
+            scale_grad_div_with_mesh=formulation != "pspg_legacy_body_force",
         )
         formulation_name = "pspg_mixed_stokes"
     fluid_mask = np.zeros(model.mesh.nodes.shape[0], dtype=bool)

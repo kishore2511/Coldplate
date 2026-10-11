@@ -115,12 +115,14 @@ class ConjugateHeatTransferSolver:
             self.props.k_fluid,
             self.props.k_solid,
         )
-        denom = max(abs(qf), abs(qs), 1e-12)
+        from coldplate_studio.fr.thermal_p1 import interface_flux_imbalance
+
+        imb = interface_flux_imbalance(qf, qs)
         return CHTDiagnostics(
             total_energy_j=e_f + e_s,
             fluid_energy_j=e_f,
             solid_energy_j=e_s,
             interface_flux_fluid_w=qf,
             interface_flux_solid_w=qs,
-            interface_flux_imbalance=abs(qf + qs) / denom,
+            interface_flux_imbalance=imb,
         )

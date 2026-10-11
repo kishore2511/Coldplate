@@ -29,4 +29,5 @@
 | `integral_fin_channel_pspg_flow` | numerically_verified | `test_flow_port_faces_have_streamwise_outward_normals` | \|n_x\|>0.5 on ports | normal-aligned selection |
 | `fin_channel_single_phase_e2e` | numerically_verified | `test_fin_channel_e2e_flow_gates_pass_reference_mesh` | flow+CHT gates | mesh_size=0.08; volumetric solid heat demo |
 | `conjugate_heat_transfer_p1` | numerically_verified | `test_fin_channel_cht_nonzero_interface_flux_with_volumetric_source` | \|Q_s\|>1e-4 W | port inlet BC; energy residual < 0.35 |
+| `conjugate_heat_transfer_p1` | numerically_verified | `test_two_material_fsi_conduction_interface_flux_matches_series_solution` | imb < 12%, Q within 8% | FSI tet bar; see FIN_CHANNEL_V04.md |
 | `conjugate_heat_transfer_p1` | numerically_verified | `test_integral_channel_interface_flux_continuity_linear_z` | imbalance &lt; 1e-6 | same k, T∝z |

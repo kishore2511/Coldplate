@@ -5,7 +5,7 @@
 | Component | Discretization | Notes |
 |-----------|----------------|-------|
 | Steady Stokes (verification) | P1–P1 mixed + PSPG (τ = h²/(4ν)) | `flow_p1_pspg_mixed.py`; pressure pin |
-| Steady Stokes (fin channel, production) | PSPG + body force + momentum grad-div (β=100) | `solve_integral_channel_pspg` (`drive=body_force_legacy`); streamwise port faces require &#124;n_x&#124;>0.7 |
+| Steady Stokes (fin channel, production) | PSPG + body force + grad-div β(h)=β_ref(h_ref/h)² | `flow_stabilization.scaled_grad_div_beta`; β_ref=100; legacy fixed β via `pspg_legacy_body_force` |
 | Steady Stokes (fin channel, legacy) | P1 + grad-div penalty | `formulation="penalty"`; regression |
 | Transient | Chorin–Temam projection on P1 | Lumped div → Poisson; γP stabilization |
 | High-order FR momentum | **Not implemented** | 1D/hex FR remain verification-only |

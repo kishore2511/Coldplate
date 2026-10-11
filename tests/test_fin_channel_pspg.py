@@ -11,7 +11,7 @@ def test_fin_channel_pspg_matches_penalty_mass_flux_at_reference_mesh():
     """PSPG+beta=100 reproduces legacy penalty port fluxes on mesh_size=0.08."""
     model = build_integral_channel_model(mesh_size=0.08)
     pen = run_channel_flow(model, formulation="penalty")
-    pspg = run_channel_flow(model, formulation="pspg")
+    pspg = run_channel_flow(model, formulation="pspg_legacy_body_force")
     assert pspg.flow.formulation == "pspg_mixed_stokes"
     assert pspg.flow.solver_residual_norm is not None
     assert pspg.flow.solver_residual_norm < 1e-8

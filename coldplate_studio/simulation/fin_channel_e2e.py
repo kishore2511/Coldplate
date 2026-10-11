@@ -115,7 +115,9 @@ def run_fin_channel_e2e(
             case.interface_flux_imbalance,
             bal_stub,
             interface_flux_magnitude_w=flux_mag,
-            enforce_interface_consistency=False,
+            interface_flux_fluid_w=case.interface_flux_fluid_w,
+            interface_flux_solid_w=case.interface_flux_solid_w,
+            enforce_interface_consistency=True,
         )
         cht_gates_dict = asdict(cht_gates_report)
         cht_ok = cht_gates_report.ok
