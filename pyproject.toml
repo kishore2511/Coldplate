@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "coldplate-studio"
+version = "0.1.0"
+description = "GPU-first thermal-fluid simulation for cold plates and two-phase cooling"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Kishore Bhaskar" }]
+dependencies = [
+  "gmsh>=4.12",
+  "networkx>=3.2",
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "pyyaml>=6.0",
+  "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+coldplate = "coldplate_studio.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["coldplate_studio*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "gpu: requires CUDA GPU",
+  "gmsh: requires gmsh shared libraries",
+]
