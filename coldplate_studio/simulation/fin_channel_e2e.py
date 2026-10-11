@@ -124,9 +124,15 @@ def run_fin_channel_e2e(
         )
         cht_gates_dict = asdict(cht_gates_report)
         cht_ok = cht_gates_report.ok
+        inlet_temperature_k = 360.0  # matches `run_fin_channel_cht_case` default
+        q_gal = max(abs(case.galerkin_flux_fluid_w), 1e-12)
+        delta_t_solid = case.solid_temperature_max_k - inlet_temperature_k
+        thermal_resistance_k_per_w = float(delta_t_solid / q_gal) if q_gal > 1e-6 else None
         cht_dict = {
             "fluid_temperature_k": [case.fluid_temperature_min_k, case.fluid_temperature_max_k],
             "solid_temperature_k": [case.solid_temperature_min_k, case.solid_temperature_max_k],
+            "solid_temperature_max_k": case.solid_temperature_max_k,
+            "thermal_resistance_k_per_w": thermal_resistance_k_per_w,
             "interface_flux_fluid_w": case.interface_flux_fluid_w,
             "interface_flux_solid_w": case.interface_flux_solid_w,
             "interface_flux_imbalance": case.interface_flux_imbalance,
@@ -144,7 +150,10 @@ def run_fin_channel_e2e(
             "thermal_drive": "port-face Dirichlet + solid base 300 K + volumetric solid source (W/m³)",
         }
     else:
-        cht_dict = {"skipped_reason": "flow gates failed", "flow_gate_messages": flow_gates.messages}
+        cht_dict = {
+            "skipped_reason": "flow gates failed",
+            "flow_gate_messages": flow_gates.messages,
+        }
 
     ok = flow_gates.ok and cht_ok
     result = FinChannelE2EResult(

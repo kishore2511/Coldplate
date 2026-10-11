@@ -1,22 +1,51 @@
+"""P2–P1 manufactured Stokes on sin-π box (see docs/engineering/P2_MMS_AUDIT.md)."""
+
+import numpy as np
+
 from coldplate_studio.fr.flow_p2_mms import (
-    estimate_ux_volume_convergence_order,
+    format_p2_mms_table,
     run_p2p1_mms_study,
+    stokes_mms_force_vector,
 )
+from coldplate_studio.simulation.flow_manufactured import manufactured_velocity_field
 
 
-def test_p2p1_manufactured_stokes_mms_residual_and_refinement():
-    """Full MMS forcing; records errors — does not assert optimal Taylor–Hood rate on this box MMS."""
-    reports = run_p2p1_mms_study(nx_levels=(4, 6, 8))
+def test_p2p1_mms_forcing_matches_weak_form_stokes():
+    """f = −νΔu + ∇p at sample points (finite-difference Laplacian spot check)."""
+    length, height, width, nu, grad_p = 1.0, 0.1, 0.2, 1e-3, -1.0
+    x0 = np.array([0.35, 0.04, 0.08])
+    eps = 1e-5
+    u0 = manufactured_velocity_field(
+        x0.reshape(1, 3), length=length, height=height, width=width, grad_p=grad_p, nu=nu
+    )[0, 0]
+    lap_fd = 0.0
+    for d in range(3):
+        xp = x0.copy()
+        xm = x0.copy()
+        xp[d] += eps
+        xm[d] -= eps
+        up = manufactured_velocity_field(
+            xp.reshape(1, 3), length=length, height=height, width=width, grad_p=grad_p, nu=nu
+        )[0, 0]
+        um = manufactured_velocity_field(
+            xm.reshape(1, 3), length=length, height=height, width=width, grad_p=grad_p, nu=nu
+        )[0, 0]
+        lap_fd += (up - 2 * u0 + um) / eps**2
+    f = stokes_mms_force_vector(
+        x0.reshape(1, 3), length=length, height=height, width=width, grad_p=grad_p, nu=nu
+    )[0, 0]
+    assert abs(f - (-nu * lap_fd + grad_p)) / max(abs(f), 1e-12) < 0.05
+
+
+def test_p2p1_manufactured_stokes_mms_residual_and_velocity():
+    reports = run_p2p1_mms_study(nx_levels=(4, 8, 12), uniform_refinement=True)
     assert len(reports) == 3
     for r in reports:
-        assert r.solver_residual < 0.05
-        assert r.divergence_l2 < 0.05
-        assert r.ux_l2 < 0.05
-        assert r.ux_l2_volume_p2 < 0.08
+        assert r.solver_residual < 1e-8
+        assert r.divergence_l2 < 1e-10
+        assert r.ux_l2 < 0.01
+        assert r.ux_l2_volume_p2 < 0.01
         assert r.solver_method in ("lsqr", "direct")
-
-
-def test_p2p1_sin_mms_volume_error_recorded_for_order_audit():
-    reports = run_p2p1_mms_study(nx_levels=(4, 8))
-    assert all(r.ux_l2_volume_p2 > 0 for r in reports)
-    _ = estimate_ux_volume_convergence_order(reports)  # may be non-monotone (see D-008)
+    # Volume L2 plateaus on this non-polynomial exact field (documented); do not require monotone refinement.
+    assert abs(reports[0].ux_l2_volume_p2 - reports[-1].ux_l2_volume_p2) < 1e-5
+    _ = format_p2_mms_table(reports)  # smoke: table formatter

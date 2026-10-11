@@ -20,7 +20,8 @@ def manufactured_velocity_field(
 ) -> np.ndarray:
     """
     u_x = U0 y(H-y) z(W-z) sin(πx/L), u_y=u_z=0 — zero on all six box faces.
-    Divergence-free. Body force f_x = -ν∇²u_x (Stokes with absorbed pressure gradient).
+    Divergence-free. For **P1 penalty** benchmarks use f = -ν∇²u (no pressure DOF).
+    For **P2–P1 mixed** MMS use f = -ν∇²u + ∇p with p = grad_p * x (`flow_p2_mms.py`).
     """
     g = -grad_p
     x, y, z = nodes[:, 0], nodes[:, 1], nodes[:, 2]

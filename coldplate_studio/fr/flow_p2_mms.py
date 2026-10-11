@@ -30,7 +30,9 @@ def stokes_mms_force_vector(
     nu: float,
 ) -> np.ndarray:
     """
-    f = ν∇²u − ∇p for the manufactured divergence-free u (x-component driven).
+    Body force for steady Stokes weak form ν∫∇u·∇v − ∫p div v = ∫f·v:
+
+    f = −νΔu + ∇p  (x-component: f_x = −νΔu_x + ∂p/∂x).
     """
     g = -grad_p
     x, y, z = nodes[:, 0], nodes[:, 1], nodes[:, 2]
@@ -41,7 +43,7 @@ def stokes_mms_force_vector(
         - 2.0 * y * (height - y)
         - (np.pi**2 / length**2) * y * (height - y) * z * (width - z)
     )
-    fx = nu * lap - grad_p
+    fx = -nu * lap + grad_p
     return np.column_stack((fx, np.zeros_like(fx), np.zeros_like(fx)))
 
 
@@ -54,9 +56,11 @@ class P2MMSReport:
     ux_l2_volume_p2: float
     ux_h1_semi: float
     p_l2_mean_zero: float
+    p_l2_relative: float
     divergence_l2: float
     solver_residual: float
     solver_method: str
+    h_eff: float
 
 
 def parabolic_channel_ux(y: np.ndarray, height: float, u_max: float) -> np.ndarray:
@@ -72,9 +76,9 @@ def stokes_parabolic_channel_force_y(
     nu: float,
     grad_p: float,
 ) -> np.ndarray:
-    """f_x = −ν ∂²u_x/∂y² − grad_p with u_x parabolic in y only."""
+    """f_x = −ν ∂²u_x/∂y² + grad_p with u_x parabolic in y only."""
     d2ux_dy2 = -8.0 * u_max / max(height**2, 1e-30)
-    fx = -nu * d2ux_dy2 - grad_p
+    fx = -nu * d2ux_dy2 + grad_p
     return np.array([fx, 0.0, 0.0])
 
 
@@ -86,6 +90,7 @@ def run_p2p1_mms_study(
     nu: float = 1e-3,
     grad_p: float = -1.0,
     nx_levels: tuple[int, ...] = (4, 6, 8),
+    uniform_refinement: bool = True,
 ) -> list[P2MMSReport]:
     from coldplate_studio.fr.flow_p1_operators import fluid_node_mask
     from coldplate_studio.fr.flow_p2_dof_map import build_p2_velocity_dof_map, pressure_dofs_on_fluid_vertices
@@ -94,7 +99,17 @@ def run_p2p1_mms_study(
 
     reports: list[P2MMSReport] = []
     for nx in nx_levels:
-        model = build_structured_fluid_box(nx=nx, ny=max(3, nx // 2), nz=2, width=width, height=height)
+        if uniform_refinement:
+            # nx is cells along x; choose ny,nz so cell size ~ length/nx in every direction.
+            h = length / nx
+            ny = max(2, int(round(height / h)))
+            nz = max(2, int(round(width / h)))
+        else:
+            ny = max(3, nx // 2)
+            nz = 2
+        model = build_structured_fluid_box(
+            nx=nx, ny=ny, nz=nz, length=length, width=width, height=height
+        )
         mesh = model.mesh
         walls = set(int(i) for i in mesh.boundary_fluid_nodes)
         pin = int(mesh.fluid_tets[0, 0])
@@ -164,6 +179,9 @@ def run_p2p1_mms_study(
         p_h = r.pressure[p_nodes]
         p_ref = p_ex[p_nodes] - np.mean(p_ex[p_nodes])
         p_l2 = float(np.sqrt(np.mean((p_h - np.mean(p_h) - p_ref) ** 2)))
+        p_norm = float(np.sqrt(np.mean(p_ref**2)))
+        p_rel = p_l2 / max(p_norm, 1e-30)
+        h_eff = length / nx  # reference cell size along streamwise direction
         reports.append(
             P2MMSReport(
                 mesh_level=nx,
@@ -173,12 +191,27 @@ def run_p2p1_mms_study(
                 ux_l2_volume_p2=ux_vol,
                 ux_h1_semi=ux_h1,
                 p_l2_mean_zero=p_l2,
+                p_l2_relative=p_rel,
                 divergence_l2=r.divergence_l2,
                 solver_residual=r.solver_residual_norm,
                 solver_method=r.solver_method,
+                h_eff=h_eff,
             )
         )
     return reports
+
+
+def format_p2_mms_table(reports: list[P2MMSReport]) -> str:
+    lines = [
+        "| nx | h | ‖ux‖_L2 vert | ‖u‖_L2 vol P2 | ‖ux‖_H1 semi | ‖p‖_L2 rel | ‖div‖ | residual |",
+        "|----|---|--------------|---------------|--------------|------------|-------|----------|",
+    ]
+    for r in reports:
+        lines.append(
+            f"| {r.mesh_level} | {r.h_eff:.4f} | {r.ux_l2:.4e} | {r.ux_l2_volume_p2:.4e} | "
+            f"{r.ux_h1_semi:.4e} | {r.p_l2_relative:.4e} | {r.divergence_l2:.2e} | {r.solver_residual:.2e} |"
+        )
+    return "\n".join(lines)
 
 
 def run_p2p1_parabolic_channel_mms_study(
@@ -192,11 +225,9 @@ def run_p2p1_parabolic_channel_mms_study(
     ny_levels: tuple[int, ...] = (4, 8, 16),
 ) -> list[P2MMSReport]:
     """
-    Manufactured Stokes: u_x parabolic in y (exactly quadratic, in P2), uniform ∂p/∂x.
-
-    x,z faces use the same no-slip field (u=0 on x,z boundaries when y=0 or y=H only;
-    on x,z walls u_x is generally nonzero — use a y-refined strip mesh with wall BC on
-    all exterior nodes; error measures interior volume L2).
+    **Not a valid MMS for this solver:** parabolic u_x(y) is incompatible with all-face
+    no-slip on a 3D box (u_x ≠ 0 on x/z walls). Retained for debugging only — do not use
+    for convergence claims (see D-008).
     """
     from coldplate_studio.fr.flow_p1_operators import fluid_node_mask
     from coldplate_studio.fr.flow_p2_dof_map import build_p2_velocity_dof_map, pressure_dofs_on_fluid_vertices
@@ -249,7 +280,9 @@ def run_p2p1_parabolic_channel_mms_study(
                 ux_l2_volume_p2=ux_vol,
                 ux_h1_semi=0.0,
                 p_l2_mean_zero=0.0,
+                p_l2_relative=0.0,
                 divergence_l2=r.divergence_l2,
+                h_eff=height / ny,
                 solver_residual=r.solver_residual_norm,
                 solver_method=r.solver_method,
             )

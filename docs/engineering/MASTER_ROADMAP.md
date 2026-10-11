@@ -1,31 +1,39 @@
 # ColdPlate Studio — master engineering roadmap
 
 **Branch:** `cursor/coldplate-studio-foundation-341b`  
-**Last verified baseline:** v0.7 — MMS eval + E2E solver_method; Phase 4.2 hex scalar adv-diff MMS
+**HEAD:** post v0.7.1 closure session (P2 MMS audit + completion contract)  
+**Regression:** run `pytest` — expect 63+ passed, 1 skipped (CUDA)
 
-## Dependency-ordered program
+See `COMPLETION_CONTRACT.md` for **COMPLETE** vs **IN PROGRESS** rules.
 
-| Phase | Scope | Status (v0.6) |
-|-------|--------|----------------|
-| 0 | Repository audit, defect register, architecture | **In progress** (this milestone) |
-| 1 | Steady P2–P1 flow, MMS, fin-channel verification | **Active** — saddle docs, MMS, P2 advection |
-| 1.4 | Transient incompressible (projection) | Implemented P1; needs P2 coupling |
-| 2 | CHT conservative interface, full-P2 advection | **Active** — Galerkin flux + P2 advection |
-| 3 | Geometry / fluid extraction / mesh QA | Partial (integral channel, preflight) |
-| 4 | 3D FR production solver | **Started** — Phase 4.2 `scalar_hex_advdiff.py` MMS on structured hex |
-| 5 | GPU solver kernels | SpMV probe only |
-| 6 | Two-phase / boiling | Planned |
-| 7 | Design optimization | Planned |
-| 8 | Integrated GUI | Not started |
-| 9–10 | Reporting, packaging, release | Partial (E2E JSON/MD reports) |
+## Production focus (this program)
 
-## Next executable actions (after v0.6 commit)
+| Capability | Status | Evidence / gap |
+|------------|--------|----------------|
+| Integral fin-channel **P2–P1** steady flow | **IN PROGRESS** | Gates pass 0.12/0.08/0.06 (`test_flow_refinement_gates`); box MMS velocity ~0.3–0.5% after D-009; pressure MMS open (D-010); saddle LSQR (D-001) |
+| **CHT** with P2 advection + Galerkin flux | **IN PROGRESS** | `thermal_p2_advection.py`, `cht_fin_channel_case.py`, E2E JSON; local gradient flux noisy (D-004); energy gates documented |
+| Fin-channel **E2E** (flow → CHT → reports) | **IN PROGRESS** | `fin_channel_e2e.py`; multi-mesh flow gates; CHT metrics in JSON; not COMPLETE until CHT + flow acceptance fully met |
+| P1 PSPG / penalty (legacy regression) | **IN PROGRESS** | Verified regressions; not production default |
+| 3D FR production / GPU / boiling / GUI | **PLANNED** | Prototype hex operators exist; **not** in production workflow |
 
-1. Extend MMS to record observed convergence orders in CI with mesh-tolerant bands.
-2. Transient P2–P1 or consistent P2 velocity in projection step.
-3. CHT mesh-refinement table for coupled fin with P2 advection (automated in E2E).
-4. Extend Phase 4.2: steady solve / boundary-aware MMS; couple hex FR to channel geometry.
+## Phase map (honest)
+
+| Phase | Scope | Status |
+|-------|--------|--------|
+| 0 | Audit, defect register, architecture | **IN PROGRESS** |
+| 1 | P2–P1 flow + MMS + fin verification | **IN PROGRESS** |
+| 2 | CHT conservative interface, P2 advection | **IN PROGRESS** |
+| 3 | Geometry / mesh QA | **IN PROGRESS** |
+| 4 | 3D FR production | **PLANNED** |
+| 5–10 | GPU, multiphase, GUI, release | **PLANNED** |
+
+## Next corrective actions (ordered)
+
+1. **P2–P1:** Pressure recovery / MMS metric for P1 \(p\) (D-010); optional MINRES/UMFPACK pivoting study for coarse meshes (D-001).
+2. **CHT:** Mesh/time refinement table for coupled fin; tighten local flux diagnostics vs Galerkin (D-004).
+3. **E2E:** Parametric gates across fin mesh sizes (flow + CHT) without hard-coding 0.08 only.
+4. Do **not** expand FR/GPU scope until rows above reach COMPLETE per contract.
 
 ## Session resume
 
-Update this file at the end of each agent session with commit SHA, test counts, and the single next task.
+Update commit SHA, pytest count, and the single next corrective action after each agent run.
