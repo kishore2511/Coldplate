@@ -11,3 +11,6 @@ def test_fin_channel_e2e_flow_gates_pass_reference_mesh(tmp_path):
     assert result.flow_gates["mass_imbalance_ok"]
     assert result.flow_gates["ok"]
     assert (tmp_path / "fin_channel_e2e_summary.json").is_file()
+    assert result.flow.get("solver_method")
+    assert result.cht is not None
+    assert "galerkin_flux_fluid_w" in result.cht

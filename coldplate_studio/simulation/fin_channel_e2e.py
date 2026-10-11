@@ -74,6 +74,8 @@ def run_fin_channel_e2e(
 
     mesh = model.mesh
     flow_dict = {
+        "formulation": flow_run.formulation,
+        "solver_method": flow_run.flow.solver_method,
         "divergence_l2": flow_run.flow.divergence_l2,
         "inlet_flux_m3_s": flow_run.flow.inlet_flux_m3_s,
         "outlet_flux_m3_s": flow_run.flow.outlet_flux_m3_s,
